@@ -1,0 +1,5 @@
+approxeng.input==2.4.0
+evdev==1.2.0
+pyserial==3.4
+pyserialtransfer>=1.1.7
+# -e git+https://github.com/robberwick/pySerialTransfer.git@list_available_ports#egg=pySerialTransfer
