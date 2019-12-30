@@ -1,4 +1,5 @@
 {
     "python.pythonPath": "/home/pi/.virtualenvs/tauradigm/bin/python",
-    "python.formatting.provider": "black"
+    "python.formatting.provider": "black",
+    "python.formatting.blackPath": "~/.virtualenvs/tauradigm/bin/black"
 }
