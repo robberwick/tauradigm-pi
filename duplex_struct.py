@@ -1,23 +1,30 @@
+import random
 import struct
+import time
 from collections import namedtuple
 
 from pySerialTransfer import pySerialTransfer as txfer
 
 if __name__ == '__main__':
     try:
-        link = txfer.SerialTransfer('/dev/serial0', baud=57600)
+        link = txfer.SerialTransfer('/dev/serial0', baud=1152000)
         while True:
-            payload = struct.pack('fff', 101.1, 202.2, 303.3)
+            x = random.uniform(-500, 500)
+            y = random.uniform(-500, 500)
+            z = random.uniform(-500, 500)
+            payload = struct.pack('fff', x, y, z)
             for i, b in enumerate(list(payload)):
                 link.txBuff[i] = b
             link.send(len(payload))
 
-            while not link.available():
+            if not link.available():
+                # print('link not available')
                 if link.status < 0:
                     print('ERROR: {}'.format(link.status))
-
-            payload = struct.unpack('bb', bytearray(link.rxBuff[0:link.bytesRead]))
-            print('left: {}, right: {}'.format(*payload))
+            else:
+                payload = struct.unpack('bbbbbbbbbbbbBBBBBBBB', bytearray(link.rxBuff[0:link.bytesRead]))
+                print(payload)
+            time.sleep(0.02)
 
     except KeyboardInterrupt:
         link.close()
