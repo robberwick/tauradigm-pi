@@ -7,7 +7,7 @@ from pySerialTransfer import pySerialTransfer as txfer
 
 if __name__ == '__main__':
     try:
-        link = txfer.SerialTransfer('/dev/serial0', baud=1152000)
+        link = txfer.SerialTransfer('/dev/serial0', baud=1152000, restrict_ports=False)
         while True:
             x = random.uniform(-500, 500)
             y = random.uniform(-500, 500)
@@ -18,7 +18,6 @@ if __name__ == '__main__':
             link.send(len(payload))
 
             if not link.available():
-                # print('link not available')
                 if link.status < 0:
                     print('ERROR: {}'.format(link.status))
             else:
