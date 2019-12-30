@@ -1,6 +1,12 @@
 approxeng.input==2.4.0
+attrs==19.3.0
+black==0.0
+Click==7.0
+entrypoints==0.3
 evdev==1.2.0
+flake8==3.7.9
+mccabe==0.6.1
+pycodestyle==2.5.0
+pyflakes==2.1.1
 pyserial==3.4
-# pyserialtransfer>=1.1.7
-# -e git+https://github.com/robberwick/pySerialTransfer.git@port_list_override#egg=pySerialTransfer
--e /home/pi/pySerialTransfer
+-e git+git@github.com:robberwick/pySerialTransfer.git@aa5c554b301b1d2420275e9ace38215b20f8265c#egg=pySerialTransfer
