@@ -36,14 +36,21 @@ def send_motor_speed_message(link=None, left=0, right=0):
     print('sending: {}'.format(payload))
     link.send(len(payload))
 
+def receive_sensor_data(link=None):
+    fmt = 'f' * 8
+
+    print('Response received:')
+
+    response = ''
+    for index in range(link.bytesRead):
+        response += chr(link.rxBuff[index])
+
+    distances = struct.unpack(fmt, response)
+
 try:
     link = txfer.SerialTransfer('/dev/serial0', baud=1152000, restrict_ports=False)
 
     while True:
-
-
-
-
         # Inner try / except is used to wait for a controller to become available, at which point we
         # bind to it and enter a loop where we read axis values and send commands to the motors.
         try:
@@ -71,6 +78,8 @@ try:
                     if 'home' in joystick.presses:
                         raise RobotStopException()
                     send_motor_speed_message(link=link, left=power_left, right=power_right)
+                    if link.available():
+                        receive_sensor_data()
                     time.sleep(0.02)
 
         except IOError:
