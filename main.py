@@ -79,7 +79,9 @@ try:
                         raise RobotStopException()
                     send_motor_speed_message(link=link, left=power_left, right=power_right)
                     if link.available():
-                        receive_sensor_data()
+                        receive_sensor_data(link=link)
+                    else:
+                        print('no link available')
                     time.sleep(0.02)
 
         except IOError:
