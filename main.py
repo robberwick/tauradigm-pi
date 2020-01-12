@@ -41,11 +41,9 @@ def receive_sensor_data(link=None):
 
     print('Response received:')
 
-    response = ''
-    for index in range(link.bytesRead):
-        response += chr(link.rxBuff[index])
+    response = b''.join(link.rxBuff[:link.bytesRead])
 
-    distances = struct.unpack(fmt, response)
+    return struct.unpack(fmt, response)
 
 try:
     link = txfer.SerialTransfer('/dev/serial0', baud=1152000, restrict_ports=False)
@@ -79,7 +77,8 @@ try:
                         raise RobotStopException()
                     send_motor_speed_message(link=link, left=power_left, right=power_right)
                     if link.available():
-                        receive_sensor_data(link=link)
+                        sensor_data = receive_sensor_data(link=link)
+                        print(sensor_data)
                     else:
                         print('no link available')
                     time.sleep(0.02)
