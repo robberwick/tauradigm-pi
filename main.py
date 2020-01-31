@@ -1,4 +1,5 @@
 from approxeng.input.selectbinder import ControllerResource
+import array
 import random
 import struct
 import time
@@ -39,9 +40,7 @@ def send_motor_speed_message(link=None, left=0, right=0):
 def receive_sensor_data(link=None):
     fmt = 'f' * 8 + 'l' * 6
 
-    # print('Response received:')
-
-    response = b''.join(link.rxBuff[:link.bytesRead])
+    response = array.array('B', link.rxBuff[:link.bytesRead]).tobytes()
 
     return struct.unpack(fmt, response)
 
@@ -81,7 +80,7 @@ def run():
                             sensor_data = receive_sensor_data(link=link)
                             print(sensor_data)
                         else:
-                            print('no link available')
+                            print('no data - link status: {}'.format(link.status))
                         time.sleep(0.02)
 
             except IOError:
