@@ -2,10 +2,23 @@ from approxeng.input.selectbinder import ControllerResource
 import array
 import random
 import struct
+import sys
 import time
 from collections import namedtuple
+from loguru import logger
 
 from pySerialTransfer import pySerialTransfer as txfer
+
+data_filter = lambda record: record["level"].name == "DATA"
+non_data_filter = lambda record: record["level"].name != "DATA"
+
+logger.remove()
+logger.level("DATA", no=15)
+fmt = "{time} - {name} - {level} - {message}"
+logger.add("logs/debug_1.log", level="DEBUG", format=fmt, rotation="5 MB", filter=non_data_filter)
+logger.add(sys.stdout, level="INFO", format=fmt, filter=non_data_filter)
+logger.add("logs/info_1.log", level="INFO", format=fmt, rotation="5 MB", filter=non_data_filter)
+logger.add("logs/data_{time}.log", level="DATA", format="{message}", filter=data_filter)
 
 class RobotStopException(Exception):
     pass
@@ -55,22 +68,21 @@ def run():
                 # Bind to any available joystick, this will use whatever's connected as long as the library
                 # supports it.
                 with ControllerResource(dead_zone=0.1, hot_zone=0.2) as joystick:
-                    print('Controller found, press HOME button to exit, use left stick to drive.')
-                    print(joystick.controls)
+                    logger.info('Controller found, press HOME button to exit, use left stick to drive.')
+                    logger.info(joystick.controls)
                     # Loop until the joystick disconnects, or we deliberately stop by raising a
                     # RobotStopException
                     while joystick.connected:
                         # Get virtual right axis joystick values from the right analogue stick
                         virt_x_axis, virt_y_axis = joystick['r']
                         power_left, power_right = mixer(yaw=virt_x_axis, throttle=virt_y_axis)
-                        # print('power left: {}, power right: {}'.format(power_left, power_right))
 
                         # Get a ButtonPresses object containing everything that was pressed since the last
                         # time around this loop.
                         joystick.check_presses()
                         # Print out any buttons that were pressed, if we had any
                         if joystick.has_presses:
-                            print(joystick.presses)
+                            logger.debug(joystick.presses)
                         # If home was pressed, raise a RobotStopException to bail out of the loop
                         # Home is generally the PS button for playstation controllers, XBox for XBox etc
                         if 'home' in joystick.presses:
@@ -78,22 +90,23 @@ def run():
                         send_motor_speed_message(link=link, left=power_left, right=power_right)
                         if link.available():
                             sensor_data = receive_sensor_data(link=link)
-                            print(sensor_data)
+                            logger.log('DATA', ','.join(map(str,sensor_data)))
                         else:
-                            print('no data - link status: {}'.format(link.status))
+                            link_msg = 'no data - link status: {}'.format(link.status)
+                            logger.info(link_msg)
                         time.sleep(0.02)
 
             except IOError:
                 # We get an IOError when using the ControllerResource if we don't have a controller yet,
                 # so in this case we just wait a second and try again after printing a message.
-                print('No controller found yet')
+                logger.info('No controller found yet')
                 send_motor_speed_message(link=link)
                 time.sleep(1)
     except (RobotStopException, KeyboardInterrupt):
         link.close()
         # This exception will be raised when the home button is pressed, at which point we should
         # stop the motors.
-        print('Home button pressed - exiting')
+        logger.info('Home button pressed - exiting')
         send_motor_speed_message(link=link)
 
 if __name__ == "__main__":
