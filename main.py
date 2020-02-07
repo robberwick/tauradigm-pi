@@ -41,10 +41,10 @@ def mixer(yaw, throttle, max_power=100):
     left = throttle + yaw
     right = throttle - yaw
     scale = float(max_power) / max(1, abs(left), abs(right))
-    return int(left * scale), int(right * scale)
+    return int(left * -scale), int(right * -scale)
 
 def send_motor_speed_message(link=None, left=0, right=0):
-    payload = struct.pack('ff', left, right)
+    payload = struct.pack('ff', right, left)
     for i, b in enumerate(list(payload)):
         link.txBuff[i] = b
     # print('sending: {}'.format(payload))
