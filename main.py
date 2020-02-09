@@ -6,6 +6,7 @@ import sys
 import time
 from collections import namedtuple
 from loguru import logger
+from easing_functions import *
 
 from pySerialTransfer import pySerialTransfer as txfer
 
@@ -23,7 +24,7 @@ logger.add("logs/data_{time}.log", level="DATA", format="{message}", filter=data
 class RobotStopException(Exception):
     pass
 
-def mixer(yaw, throttle, max_power=100):
+def mixer(yaw, throttle, max_power=50):
     """
     Mix a pair of joystick axes, returning a pair of wheel speeds. This is where the mapping from
     joystick positions to wheel powers is defined, so any changes to how the robot drives should
@@ -38,8 +39,13 @@ def mixer(yaw, throttle, max_power=100):
     :return:
         A pair of power_left, power_right integer values to send to the motor driver
     """
-    left = throttle + yaw
-    right = throttle - yaw
+    #duration seams to change how aggressive the exponential is
+    throttlemapping = CubicEaseIn(start=0, end = max_power, duration = 3)
+    yawmapping = CubicEaseIn(start=0, end = max_power, duration = 3)
+
+    left = throttlemapping.ease(throttle) + yawmapping.ease(yaw)
+    right = throttlemapping.ease(throttle) - yawmapping.ease(yaw)
+
     scale = float(max_power) / max(1, abs(left), abs(right))
     return int(left * -scale), int(right * -scale)
 
