@@ -59,7 +59,7 @@ def receive_sensor_data(link=None):
 
 def run():
     try:
-        link = txfer.SerialTransfer('/dev/serial0', baud=1152000, restrict_ports=False)
+        link = txfer.SerialTransfer('/dev/serial0', baud=115200, restrict_ports=False)
 
         while True:
             # Inner try / except is used to wait for a controller to become available, at which point we
