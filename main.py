@@ -60,6 +60,7 @@ def receive_sensor_data(link=None):
 def run():
     try:
         link = txfer.SerialTransfer('/dev/serial0', baud=115200, restrict_ports=False)
+        battery_checked = False
 
         while True:
             # Inner try / except is used to wait for a controller to become available, at which point we
@@ -70,9 +71,21 @@ def run():
                 with ControllerResource(dead_zone=0.1, hot_zone=0.2) as joystick:
                     logger.info('Controller found, press HOME button to exit, use left stick to drive.')
                     logger.info(joystick.controls)
+
                     # Loop until the joystick disconnects, or we deliberately stop by raising a
                     # RobotStopException
                     while joystick.connected:
+                        if not battery_checked: 
+                            battery_level = joystick.battery_level
+                            if battery_level:
+                                if battery_level<=0.25:
+                                    logger.info('battery flat, only at: {:.2f}'.format(joystick.battery_level))
+                                    logger.info('exiting')
+                                    raise RobotStopException()
+                                else:
+                                    logger.info('battery level: {:.2f}'.format(joystick.battery_level))
+                                    battery_checked = True
+
                         # Get virtual right axis joystick values from the right analogue stick
                         virt_x_axis, virt_y_axis = joystick['r']
                         power_left, power_right = mixer(yaw=virt_x_axis, throttle=virt_y_axis)
@@ -86,6 +99,7 @@ def run():
                         # If home was pressed, raise a RobotStopException to bail out of the loop
                         # Home is generally the PS button for playstation controllers, XBox for XBox etc
                         if 'home' in joystick.presses:
+                            logger.info('Home button pressed - exiting')
                             raise RobotStopException()
                         send_motor_speed_message(link=link, left=power_left, right=power_right)
                         if link.available():
@@ -100,13 +114,13 @@ def run():
                 # We get an IOError when using the ControllerResource if we don't have a controller yet,
                 # so in this case we just wait a second and try again after printing a message.
                 logger.info('No controller found yet')
+                batteryChecked = False
                 send_motor_speed_message(link=link)
                 time.sleep(1)
     except (RobotStopException, KeyboardInterrupt):
         link.close()
-        # This exception will be raised when the home button is pressed, at which point we should
-        # stop the motors.
-        logger.info('Home button pressed - exiting')
+        # This exception will be raised when the home button is pressed, or the controller
+        # battery is flat, at which point we should stop the motors.
         send_motor_speed_message(link=link)
 
 if __name__ == "__main__":
