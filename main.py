@@ -89,8 +89,8 @@ def run():
                             raise RobotStopException()
                         send_motor_speed_message(link=link, left=power_left, right=power_right)
                         if link.available():
-                            sensor_data = receive_sensor_data(link=link)
-                            logger.log('DATA', ','.join(map(str,sensor_data)))
+                            log_data = (time.time(),)+ receive_sensor_data(link=link)
+                            logger.log('DATA', ','.join(map(str,log_data)))
                         else:
                             link_msg = 'no data - link status: {}'.format(link.status)
                             logger.info(link_msg)
