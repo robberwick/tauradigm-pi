@@ -51,7 +51,7 @@ def send_motor_speed_message(link=None, left=0, right=0):
     link.send(len(payload))
 
 def receive_sensor_data(link=None):
-    fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3
+    fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3 + 'h' * 4 
 
     response = array.array('B', link.rxBuff[:link.bytesRead]).tobytes()
 
