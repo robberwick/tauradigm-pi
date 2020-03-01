@@ -105,7 +105,7 @@ def run():
                             kp = 0.005
                             if log_data is not None:
                                 target_distance = 600
-                                distance_sensor1 = log_data[3]
+                                distance_sensor1 = min(1000, log_data[3])
                                 steering_compensation = int((distance_sensor1 - target_distance)* kp)
                                 lit_threshold = 750
                                 # light levels are at log_data[21] through to [24] inclusive
