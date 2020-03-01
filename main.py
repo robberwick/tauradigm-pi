@@ -59,7 +59,7 @@ def receive_sensor_data(link=None):
 
 def run():
     try:
-        link = txfer.SerialTransfer('/dev/serial0', baud=115200, restrict_ports=False)
+        link = txfer.SerialTransfer('/dev/serial0', baud=1000000, restrict_ports=False)
         battery_checked = False
 
         while True:
