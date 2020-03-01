@@ -19,6 +19,7 @@ logger.add("logs/debug_1.log", level="DEBUG", format=fmt, rotation="5 MB", filte
 logger.add(sys.stdout, level="INFO", format=fmt, filter=non_data_filter)
 logger.add("logs/info_1.log", level="INFO", format=fmt, rotation="5 MB", filter=non_data_filter)
 logger.add("logs/data_{time}.log", level="DATA", format="{message}", filter=data_filter)
+log_data = None
 
 class RobotStopException(Exception):
     pass
@@ -89,7 +90,6 @@ def run():
                         # Get virtual right axis joystick values from the right analogue stick
                         virt_x_axis, virt_y_axis = joystick['r']
                         power_left, power_right = mixer(yaw=virt_x_axis, throttle=virt_y_axis)
-
                         # Get a ButtonPresses object containing everything that was pressed since the last
                         # time around this loop.
                         joystick.check_presses()
@@ -101,6 +101,30 @@ def run():
                         if 'home' in joystick.presses:
                             logger.info('Home button pressed - exiting')
                             raise RobotStopException()
+                        if joystick.circle:
+                            kp = 0.005
+                            if log_data is not None:
+                                target_distance = 600
+                                distance_sensor1 = log_data[2]
+                                steering_compensation = int((distance_sensor1 - target_distance)* kp)
+                                lit_threshold = 500
+                                light_level1 = log_data[21]
+                                light_level2 = log_data[22]
+                                light_level3 = log_data[23]
+                                light_level4 = log_data[24]
+                                max_light = max(light_level1, light_level2, light_level3)
+                                if max_light > lit_threshold:
+                                   stop = True
+                                else:
+                                    stop = False
+                            else:
+                                stop = False
+                                steering_compensation = 0
+                            power_left = 0 + steering_compensation
+                            power_right = 90 - steering_compensation
+                            if stop:
+                                power_left = 0
+                                power_right = 0
                         send_motor_speed_message(link=link, left=power_left, right=power_right)
                         if link.available():
                             log_data = (time.time(),)+ receive_sensor_data(link=link)
