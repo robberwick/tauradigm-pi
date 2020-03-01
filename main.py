@@ -102,10 +102,10 @@ def run():
                             logger.info('Home button pressed - exiting')
                             raise RobotStopException()
                         if joystick.circle:
-                            kp = 0.005
+                            kp = 0.05
                             if log_data is not None:
-                                target_distance = 600
-                                distance_sensor1 = min(1000, log_data[3])
+                                target_distance = 540
+                                distance_sensor1 = min(2000, log_data[3])
                                 steering_compensation = int((distance_sensor1 - target_distance)* kp)
                                 lit_threshold = 750
                                 # light levels are at log_data[21] through to [24] inclusive
@@ -116,7 +116,7 @@ def run():
                             else:
                                 stop = False
                                 steering_compensation = 0
-                            power_left = 32 + steering_compensation
+                            power_left = 31 + steering_compensation
                             power_right = 100 - steering_compensation
                             if stop:
                                 power_left = 0
