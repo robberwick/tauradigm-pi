@@ -107,16 +107,12 @@ def run():
                                 target_distance = 600
                                 distance_sensor1 = log_data[3]
                                 steering_compensation = int((distance_sensor1 - target_distance)* kp)
-                                lit_threshold = 500
-                                light_level1 = log_data[21]
-                                light_level2 = log_data[22]
-                                light_level3 = log_data[23]
-                                light_level4 = log_data[24]
-                                max_light = max(light_level1, light_level2, light_level3)
-                                if max_light > lit_threshold:
-                                    stop = True
-                                else:
-                                    stop = False
+                                lit_threshold = 750
+                                # light levels are at log_data[21] through to [24] inclusive
+                                # currently  #24 is not working
+                                # stop if max light level is above threshold
+                                stop = max(log_data[21:24]) >= lit_threshold
+
                             else:
                                 stop = False
                                 steering_compensation = 0
