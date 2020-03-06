@@ -116,8 +116,8 @@ def run():
                             else:
                                 stop = False
                                 steering_compensation = 0
-                            power_left = 31 + steering_compensation
-                            power_right = 100 - steering_compensation
+                            power_left = 26 + steering_compensation
+                            power_right = 20 - steering_compensation
                             if stop:
                                 power_left = 0
                                 power_right = 0
