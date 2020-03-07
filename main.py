@@ -45,14 +45,14 @@ def mixer(yaw, throttle, max_power=100):
     return int(left * -scale), int(right * -scale)
 
 def send_motor_speed_message(link=None, left=0, right=0):
-    payload = struct.pack('Bff', 0, right, left)
+    payload = struct.pack('=bff', 1, right, left)
     for i, b in enumerate(list(payload)):
         link.txBuff[i] = b
     # print('sending: {}'.format(payload))
     link.send(len(payload))
 
 def receive_sensor_data(link=None):
-    fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3 + 'h' * 4 
+    fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3 + 'h' * 4
 
     response = array.array('B', link.rxBuff[:link.bytesRead]).tobytes()
 
@@ -76,7 +76,7 @@ def run():
                     # Loop until the joystick disconnects, or we deliberately stop by raising a
                     # RobotStopException
                     while joystick.connected:
-                        if not battery_checked: 
+                        if not battery_checked:
                             battery_level = joystick.battery_level
                             if battery_level:
                                 if battery_level<=0.25:
