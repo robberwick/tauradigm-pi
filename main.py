@@ -19,6 +19,7 @@ logger.add("logs/debug_1.log", level="DEBUG", format=fmt, rotation="5 MB", filte
 logger.add(sys.stdout, level="INFO", format=fmt, filter=non_data_filter)
 logger.add("logs/info_1.log", level="INFO", format=fmt, rotation="5 MB", filter=non_data_filter)
 logger.add("logs/data_{time}.log", level="DATA", format="{message}", filter=data_filter)
+log_data = None
 
 class RobotStopException(Exception):
     pass
@@ -44,14 +45,14 @@ def mixer(yaw, throttle, max_power=100):
     return int(left * -scale), int(right * -scale)
 
 def send_motor_speed_message(link=None, left=0, right=0):
-    payload = struct.pack('ff', right, left)
+    payload = struct.pack('=bff', 1, right, left)
     for i, b in enumerate(list(payload)):
         link.txBuff[i] = b
     # print('sending: {}'.format(payload))
     link.send(len(payload))
 
 def receive_sensor_data(link=None):
-    fmt = 'f' * 8 + 'l' * 6 + 'f' * 3
+    fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3 + 'h' * 4
 
     response = array.array('B', link.rxBuff[:link.bytesRead]).tobytes()
 
@@ -75,7 +76,7 @@ def run():
                     # Loop until the joystick disconnects, or we deliberately stop by raising a
                     # RobotStopException
                     while joystick.connected:
-                        if not battery_checked: 
+                        if not battery_checked:
                             battery_level = joystick.battery_level
                             if battery_level:
                                 if battery_level<=0.25:
@@ -89,7 +90,6 @@ def run():
                         # Get virtual right axis joystick values from the right analogue stick
                         virt_x_axis, virt_y_axis = joystick['r']
                         power_left, power_right = mixer(yaw=virt_x_axis, throttle=virt_y_axis)
-
                         # Get a ButtonPresses object containing everything that was pressed since the last
                         # time around this loop.
                         joystick.check_presses()
@@ -101,6 +101,26 @@ def run():
                         if 'home' in joystick.presses:
                             logger.info('Home button pressed - exiting')
                             raise RobotStopException()
+                        if joystick.circle:
+                            kp = 0.05
+                            if log_data is not None:
+                                target_distance = 540
+                                distance_sensor1 = min(2000, log_data[3])
+                                steering_compensation = int((distance_sensor1 - target_distance)* kp)
+                                lit_threshold = 750
+                                # light levels are at log_data[21] through to [24] inclusive
+                                # currently  #24 is not working
+                                # stop if max light level is above threshold
+                                stop = max(log_data[21:24]) >= lit_threshold
+
+                            else:
+                                stop = False
+                                steering_compensation = 0
+                            power_left = 26 + steering_compensation
+                            power_right = 20 - steering_compensation
+                            if stop:
+                                power_left = 0
+                                power_right = 0
                         send_motor_speed_message(link=link, left=power_left, right=power_right)
                         if link.available():
                             log_data = (time.time(),)+ receive_sensor_data(link=link)
