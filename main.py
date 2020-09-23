@@ -44,11 +44,17 @@ def mixer(yaw, throttle, max_power=100):
     scale = float(max_power) / max(1, abs(left), abs(right))
     return int(left * -scale), int(right * -scale)
 
-def send_motor_speed_message(link=None, left=0, right=0, jaw=0, lift=0):
-    payload = struct.pack('=bffff', 1, right, left, jaw, lift)
+def send_motor_speed_message(link=None, left=0, right=0):
+    payload = struct.pack('=bff', 1, right, left)
     for i, b in enumerate(list(payload)):
         link.txBuff[i] = b
     # print('sending: {}'.format(payload))
+    link.send(len(payload))
+
+def send_button_press_message(link=None, button=' '):
+    payload = struct.pack('=bc', 2, button)
+    for i, b in enumerate(list(payload)):
+        link.txBuff[i] = b
     link.send(len(payload))
 
 def receive_sensor_data(link=None):
@@ -90,13 +96,20 @@ def run():
                         # Get virtual right axis joystick values from the right analogue stick
                         virt_x_axis, virt_y_axis = joystick['r']
                         power_left, power_right = mixer(yaw=virt_x_axis, throttle=virt_y_axis)
-                        grabber_jaw, grabber_lift = joystick['l']
                         # Get a ButtonPresses object containing everything that was pressed since the last
                         # time around this loop.
                         joystick.check_presses()
                         # Print out any buttons that were pressed, if we had any
                         if joystick.has_presses:
                             logger.debug(joystick.presses)
+                            if joystick.presses.circle:
+                                send_button_press_message(link,button=b'c')
+                            if joystick.presses.triangle:
+                                send_button_press_message(link,button=b't')
+                            if joystick.presses.square:
+                                send_button_press_message(link,button=b's')
+                            if joystick.presses.cross:
+                                send_button_press_message(link,button=b'x')
                         # If home was pressed, raise a RobotStopException to bail out of the loop
                         # Home is generally the PS button for playstation controllers, XBox for XBox etc
                         if 'home' in joystick.presses:
@@ -122,7 +135,7 @@ def run():
                             if stop:
                                 power_left = 0
                                 power_right = 0
-                        send_motor_speed_message(link=link, left=power_left, right=power_right, jaw=grabber_jaw,lift=grabber_lift)
+                        send_motor_speed_message(link=link, left=power_left, right=power_right)
                         if link.available():
                             log_data = (time.time(),)+ receive_sensor_data(link=link)
                             logger.log('DATA', ','.join(map(str,log_data)))
