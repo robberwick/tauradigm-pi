@@ -1,2 +1,2 @@
 -r common.txt
-pySerialTransfer==1.1.11
+pySerialTransfer==2.0.4

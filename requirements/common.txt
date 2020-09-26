@@ -1,7 +1,7 @@
 approxeng.input==2.4.0
 attrs==19.3.0
-black==0.0
-Click==7.0
+black
+Click
 entrypoints==0.3
 evdev==1.2.0
 flake8==3.7.9
