@@ -9,6 +9,8 @@ from loguru import logger
 
 from pySerialTransfer import pySerialTransfer as txfer
 
+from enums import MessageType
+
 data_filter = lambda record: record["level"].name == "DATA"
 non_data_filter = lambda record: record["level"].name != "DATA"
 
@@ -45,16 +47,27 @@ def mixer(yaw, throttle, max_power=100):
     return int(left * -scale), int(right * -scale)
 
 def send_motor_speed_message(link=None, left=0, right=0):
-    payload = struct.pack('=bff', 1, right, left)
+    payload = struct.pack('=bff', MessageType.COMMAND_MOTOR_SPEED, right, left)
     for i, b in enumerate(list(payload)):
         link.txBuff[i] = b
     # print('sending: {}'.format(payload))
     link.send(len(payload))
 
+def process_incoming_message(link=None):
+    # get message type from first byte
+    message_type = link.rxBuff[0]
+    func_handlers = {
+        MessageType.RECEIVE_SENSOR_DATA: receive_sensor_data,
+    }
+
+    handler = func_handlers.get(message_type)
+    if handler is not None:
+        return handler(link=link)
+
 def receive_sensor_data(link=None):
     fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3 + 'h' * 4
 
-    response = array.array('B', link.rxBuff[:link.bytesRead]).tobytes()
+    response = array.array('B', link.rxBuff[1:link.bytesRead]).tobytes()
 
     return struct.unpack(fmt, response)
 
@@ -123,8 +136,10 @@ def run():
                                 power_right = 0
                         send_motor_speed_message(link=link, left=power_left, right=power_right)
                         if link.available():
-                            log_data = (time.time(),)+ receive_sensor_data(link=link)
-                            logger.log('DATA', ','.join(map(str,log_data)))
+                            log_data = process_incoming_message(link=link)
+                            if log_data:
+                                # log_data = (time.time(),)+ receive_sensor_data(link=link)
+                                logger.log('DATA', ','.join(map(str,log_data)))
                         else:
                             link_msg = 'no data - link status: {}'.format(link.status)
                             logger.info(link_msg)
