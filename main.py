@@ -51,6 +51,12 @@ def send_motor_speed_message(link=None, left=0, right=0):
     # print('sending: {}'.format(payload))
     link.send(len(payload))
 
+def send_bad_message(link=None):
+    payload = struct.pack('=b', 3)
+    for i, b in enumerate(list(payload)):
+        link.txBuff[i] = b
+    link.send(len(payload))
+
 def receive_sensor_data(link=None):
     fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3 + 'h' * 4
 
@@ -102,25 +108,16 @@ def run():
                             logger.info('Home button pressed - exiting')
                             raise RobotStopException()
                         if joystick.circle:
-                            kp = 0.05
-                            if log_data is not None:
-                                target_distance = 540
-                                distance_sensor1 = min(2000, log_data[3])
-                                steering_compensation = int((distance_sensor1 - target_distance)* kp)
-                                lit_threshold = 750
-                                # light levels are at log_data[21] through to [24] inclusive
-                                # currently  #24 is not working
-                                # stop if max light level is above threshold
-                                stop = max(log_data[21:24]) >= lit_threshold
-
-                            else:
-                                stop = False
-                                steering_compensation = 0
-                            power_left = 26 + steering_compensation
-                            power_right = 20 - steering_compensation
-                            if stop:
-                                power_left = 0
-                                power_right = 0
+                            logger.info('circle pressed, spamming')
+                            # if circle pressed, spam (overwelm) the teensy with messages to fill buffer)
+                            ham = 200
+                            for spam in range(ham):
+                                send_motor_speed_message(link=link, left=10, right=10)
+                        if joystick.cross:
+                            logger.info('cross pressed, sending bad message')
+                            # if circle pressed, spam (overwelm) the teensy with messages to fill buffer)
+                            send_bad_message(link=link)
+                        #send actual value now, as usual
                         send_motor_speed_message(link=link, left=power_left, right=power_right)
                         if link.available():
                             log_data = (time.time(),)+ receive_sensor_data(link=link)
