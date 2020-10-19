@@ -110,7 +110,7 @@ def run():
                         if joystick.circle:
                             logger.info('circle pressed, spamming')
                             # if circle pressed, spam (overwelm) the teensy with messages to fill buffer)
-                            ham = 200
+                            ham = 30000
                             for spam in range(ham):
                                 send_motor_speed_message(link=link, left=10, right=10)
                         if joystick.cross:
