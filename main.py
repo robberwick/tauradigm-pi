@@ -103,38 +103,30 @@ def run():
                         if joystick.has_presses:
                             logger.debug(joystick.presses)
                             if joystick.presses.circle:
+                                time.sleep(0.06)
                                 send_button_press_message(link,button=b'c')
+                                logger.info('circle button pressed')
+                                time.sleep(0.06)
                             if joystick.presses.triangle:
+                                time.sleep(0.06)
                                 send_button_press_message(link,button=b't')
+                                logger.info('triangle button pressed')
+                                time.sleep(0.06)
                             if joystick.presses.square:
+                                time.sleep(0.06)
                                 send_button_press_message(link,button=b's')
+                                logger.info('square button pressed')
+                                time.sleep(0.06)
                             if joystick.presses.cross:
+                                time.sleep(0.06)
                                 send_button_press_message(link,button=b'x')
+                                logger.info('cross button pressed')
+                                time.sleep(0.06)
                         # If home was pressed, raise a RobotStopException to bail out of the loop
                         # Home is generally the PS button for playstation controllers, XBox for XBox etc
                         if 'home' in joystick.presses:
                             logger.info('Home button pressed - exiting')
                             raise RobotStopException()
-                        if joystick.circle:
-                            kp = 0.05
-                            if log_data is not None:
-                                target_distance = 540
-                                distance_sensor1 = min(2000, log_data[3])
-                                steering_compensation = int((distance_sensor1 - target_distance)* kp)
-                                lit_threshold = 750
-                                # light levels are at log_data[21] through to [24] inclusive
-                                # currently  #24 is not working
-                                # stop if max light level is above threshold
-                                stop = max(log_data[21:24]) >= lit_threshold
-
-                            else:
-                                stop = False
-                                steering_compensation = 0
-                            power_left = 26 + steering_compensation
-                            power_right = 20 - steering_compensation
-                            if stop:
-                                power_left = 0
-                                power_right = 0
                         send_motor_speed_message(link=link, left=power_left, right=power_right)
                         if link.available():
                             log_data = (time.time(),)+ receive_sensor_data(link=link)
