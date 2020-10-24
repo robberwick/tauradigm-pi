@@ -101,27 +101,33 @@ def run():
                         joystick.check_presses()
                         # Print out any buttons that were pressed, if we had any
                         if joystick.has_presses:
+                            time.sleep(0.06)
                             logger.debug(joystick.presses)
                             if joystick.presses.circle:
-                                time.sleep(0.06)
                                 send_button_press_message(link,button=b'c')
                                 logger.info('circle button pressed')
-                                time.sleep(0.06)
                             if joystick.presses.triangle:
-                                time.sleep(0.06)
                                 send_button_press_message(link,button=b't')
                                 logger.info('triangle button pressed')
-                                time.sleep(0.06)
                             if joystick.presses.square:
-                                time.sleep(0.06)
                                 send_button_press_message(link,button=b's')
                                 logger.info('square button pressed')
-                                time.sleep(0.06)
                             if joystick.presses.cross:
-                                time.sleep(0.06)
                                 send_button_press_message(link,button=b'x')
                                 logger.info('cross button pressed')
-                                time.sleep(0.06)
+                            if joystick.presses.dleft:
+                                send_button_press_message(link,button=b'l')
+                                logger.info('D pad left pressed')
+                            if joystick.presses.dright:
+                                send_button_press_message(link,button=b'r')
+                                logger.info('D pad right pressed')
+                            if joystick.presses.dup:
+                                send_button_press_message(link,button=b'u')
+                                logger.info('D pad up pressed')
+                            if joystick.presses.ddown:
+                                send_button_press_message(link,button=b'd')
+                                logger.info('D pad down pressed')
+                            time.sleep(0.06)
                         # If home was pressed, raise a RobotStopException to bail out of the loop
                         # Home is generally the PS button for playstation controllers, XBox for XBox etc
                         if 'home' in joystick.presses:
