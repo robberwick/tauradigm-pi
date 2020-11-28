@@ -93,8 +93,8 @@ def run():
 
                         # get values for joystick left axis
                         left_x_axis, left_y_axis = joystick['l']
-                        downforce = 100 * left_y_axis
-
+                        downforce = max(-200 * left_y_axis - 100, -100)
+                        
                         # Get a ButtonPresses object containing everything that was pressed since the last
                         # time around this loop.
                         joystick.check_presses()
