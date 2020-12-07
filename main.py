@@ -4,6 +4,8 @@ import random
 import struct
 import sys
 import time
+from datetime import datetime
+import picamera
 from collections import namedtuple
 from loguru import logger
 
@@ -68,87 +70,97 @@ def run():
     try:
         link = txfer.SerialTransfer('/dev/serial0', baud=1000000, restrict_ports=False)
         battery_checked = False
+        with picamera.PiCamera() as camera:
+            camera.resolution = (128, 128)
+            camera.start_preview()
+            frame =0
+            while True:
+                # Inner try / except is used to wait for a controller to become available, at which point we
+                # bind to it and enter a loop where we read axis values and send commands to the motors.
+                try:
+                    # Bind to any available joystick, this will use whatever's connected as long as the library
+                    # supports it.
+                    with ControllerResource(dead_zone=0.1, hot_zone=0.2) as joystick:
+                        logger.info('Controller found, press HOME button to exit, use left stick to drive.')
+                        logger.info(joystick.controls)
 
-        while True:
-            # Inner try / except is used to wait for a controller to become available, at which point we
-            # bind to it and enter a loop where we read axis values and send commands to the motors.
-            try:
-                # Bind to any available joystick, this will use whatever's connected as long as the library
-                # supports it.
-                with ControllerResource(dead_zone=0.1, hot_zone=0.2) as joystick:
-                    logger.info('Controller found, press HOME button to exit, use left stick to drive.')
-                    logger.info(joystick.controls)
+                        # Loop until the joystick disconnects, or we deliberately stop by raising a
+                        # RobotStopException
+                        while joystick.connected:
+                                        
+                            date = datetime.now()
+                            timestamp = date.strftime('%H-%M-%S')
+                            #name = folderName + '/' + 'image' + timestamp + '-' + str(frame) + '.data'
+                            name = 'image' + timestamp + '-' + str(frame) + '.jpeg'
+                            frame = frame + 1
+                            camera.capture(name, format='jpeg')
+                            if not battery_checked:
+                                battery_level = joystick.battery_level
+                                if battery_level:
+                                    if battery_level<=0.25:
+                                        logger.info('battery flat, only at: {:.2f}'.format(joystick.battery_level))
+                                        logger.info('exiting')
+                                        raise RobotStopException()
+                                    else:
+                                        logger.info('battery level: {:.2f}'.format(joystick.battery_level))
+                                        battery_checked = True
 
-                    # Loop until the joystick disconnects, or we deliberately stop by raising a
-                    # RobotStopException
-                    while joystick.connected:
-                        if not battery_checked:
-                            battery_level = joystick.battery_level
-                            if battery_level:
-                                if battery_level<=0.25:
-                                    logger.info('battery flat, only at: {:.2f}'.format(joystick.battery_level))
-                                    logger.info('exiting')
-                                    raise RobotStopException()
-                                else:
-                                    logger.info('battery level: {:.2f}'.format(joystick.battery_level))
-                                    battery_checked = True
+                            # Get virtual right axis joystick values from the right analogue stick
+                            virt_x_axis, virt_y_axis = joystick['r']
+                            power_left, power_right = mixer(yaw=virt_x_axis, throttle=virt_y_axis)
+                            # Get a ButtonPresses object containing everything that was pressed since the last
+                            # time around this loop.
+                            joystick.check_presses()
+                            # Print out any buttons that were pressed, if we had any
+                            if joystick.has_presses:
+                                time.sleep(0.06)
+                                logger.debug(joystick.presses)
+                                if joystick.presses.circle:
+                                    send_button_press_message(link,button=b'c')
+                                    logger.info('circle button pressed')
+                                if joystick.presses.triangle:
+                                    send_button_press_message(link,button=b't')
+                                    logger.info('triangle button pressed')
+                                if joystick.presses.square:
+                                    send_button_press_message(link,button=b's')
+                                    logger.info('square button pressed')
+                                if joystick.presses.cross:
+                                    send_button_press_message(link,button=b'x')
+                                    logger.info('cross button pressed')
+                                if joystick.presses.dleft:
+                                    send_button_press_message(link,button=b'l')
+                                    logger.info('D pad left pressed')
+                                if joystick.presses.dright:
+                                    send_button_press_message(link,button=b'r')
+                                    logger.info('D pad right pressed')
+                                if joystick.presses.dup:
+                                    send_button_press_message(link,button=b'u')
+                                    logger.info('D pad up pressed')
+                                if joystick.presses.ddown:
+                                    send_button_press_message(link,button=b'd')
+                                    logger.info('D pad down pressed')
+                                time.sleep(0.06)
+                            # If home was pressed, raise a RobotStopException to bail out of the loop
+                            # Home is generally the PS button for playstation controllers, XBox for XBox etc
+                            if 'home' in joystick.presses:
+                                logger.info('Home button pressed - exiting')
+                                raise RobotStopException()
+                            send_motor_speed_message(link=link, left=power_left, right=power_right)
+                            if link.available():
+                                log_data = (time.time(),)+ receive_sensor_data(link=link)
+                                logger.log('DATA', ','.join(map(str,log_data)))
+                            else:
+                                link_msg = 'no data - link status: {}'.format(link.status)
+                                logger.info(link_msg)
+                            time.sleep(0.02)
 
-                        # Get virtual right axis joystick values from the right analogue stick
-                        virt_x_axis, virt_y_axis = joystick['r']
-                        power_left, power_right = mixer(yaw=virt_x_axis, throttle=virt_y_axis)
-                        # Get a ButtonPresses object containing everything that was pressed since the last
-                        # time around this loop.
-                        joystick.check_presses()
-                        # Print out any buttons that were pressed, if we had any
-                        if joystick.has_presses:
-                            time.sleep(0.06)
-                            logger.debug(joystick.presses)
-                            if joystick.presses.circle:
-                                send_button_press_message(link,button=b'c')
-                                logger.info('circle button pressed')
-                            if joystick.presses.triangle:
-                                send_button_press_message(link,button=b't')
-                                logger.info('triangle button pressed')
-                            if joystick.presses.square:
-                                send_button_press_message(link,button=b's')
-                                logger.info('square button pressed')
-                            if joystick.presses.cross:
-                                send_button_press_message(link,button=b'x')
-                                logger.info('cross button pressed')
-                            if joystick.presses.dleft:
-                                send_button_press_message(link,button=b'l')
-                                logger.info('D pad left pressed')
-                            if joystick.presses.dright:
-                                send_button_press_message(link,button=b'r')
-                                logger.info('D pad right pressed')
-                            if joystick.presses.dup:
-                                send_button_press_message(link,button=b'u')
-                                logger.info('D pad up pressed')
-                            if joystick.presses.ddown:
-                                send_button_press_message(link,button=b'd')
-                                logger.info('D pad down pressed')
-                            time.sleep(0.06)
-                        # If home was pressed, raise a RobotStopException to bail out of the loop
-                        # Home is generally the PS button for playstation controllers, XBox for XBox etc
-                        if 'home' in joystick.presses:
-                            logger.info('Home button pressed - exiting')
-                            raise RobotStopException()
-                        send_motor_speed_message(link=link, left=power_left, right=power_right)
-                        if link.available():
-                            log_data = (time.time(),)+ receive_sensor_data(link=link)
-                            logger.log('DATA', ','.join(map(str,log_data)))
-                        else:
-                            link_msg = 'no data - link status: {}'.format(link.status)
-                            logger.info(link_msg)
-                        time.sleep(0.02)
-
-            except IOError:
-                # We get an IOError when using the ControllerResource if we don't have a controller yet,
-                # so in this case we just wait a second and try again after printing a message.
-                logger.info('No controller found yet')
-                batteryChecked = False
-                send_motor_speed_message(link=link)
-                time.sleep(1)
+                except IOError:
+                    # We get an IOError when using the ControllerResource if we don't have a controller yet,
+                    # so in this case we just wait a second and try again after printing a message.
+                    logger.info('No controller found yet')
+                    batteryChecked = False
+                    send_motor_speed_message(link=link)
+                    time.sleep(1)
     except (RobotStopException, KeyboardInterrupt):
         link.close()
         # This exception will be raised when the home button is pressed, or the controller
