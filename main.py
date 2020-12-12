@@ -6,6 +6,7 @@ import sys
 import time
 from datetime import datetime
 import picamera
+from camera_utils import RecordingOutput
 from collections import namedtuple
 from loguru import logger
 
@@ -22,6 +23,32 @@ logger.add(sys.stdout, level="INFO", format=fmt, filter=non_data_filter)
 logger.add("logs/info_1.log", level="INFO", format=fmt, rotation="5 MB", filter=non_data_filter)
 logger.add("logs/data_{time}.log", level="DATA", format="{message}", filter=data_filter)
 log_data = None
+
+RECORD_TIME = 5  # number of seconds to record
+
+# FRAME_RATE = 90
+FRAME_RATE = 120
+# FRAME_RATE = 200
+
+# SENSOR_MODE = 4  # 1640x1232, full FoV, binning 2x2
+# RESOLUTION = (1640, 1232)
+# RESOLUTION = (820, 616)
+
+# SENSOR_MODE = 6  # 1280x720, partial FoV, binning 2x2
+# RESOLUTION = (1280, 720)
+
+SENSOR_MODE = 7  # 640x480, partial FoV, binning 2x2
+RESOLUTION = (640, 480)
+
+
+# Calculate the actual image size in the stream (accounting for rounding
+# of the resolution)
+# Capturing yuv will round horizontal resolution to 16 multiple and vertical to 32 multiple
+# see: https://picamera.readthedocs.io/en/release-1.12/recipes2.html#unencoded-image-capture-yuv-format
+fwidth = (RESOLUTION[0] + 31) // 32 * 32
+fheight = (RESOLUTION[1] + 15) // 16 * 16
+print(f'frame size {fwidth}x{fheight}')
+
 
 class RobotStopException(Exception):
     pass
@@ -70,10 +97,24 @@ def run():
     try:
         link = txfer.SerialTransfer('/dev/serial0', baud=1000000, restrict_ports=False)
         battery_checked = False
-        with picamera.PiCamera() as camera:
-            camera.resolution = (128, 128)
-            camera.start_preview()
-            frame =0
+        with picamera.PiCamera(
+                    sensor_mode=SENSOR_MODE,
+                    resolution=RESOLUTION,
+                    framerate=FRAME_RATE
+        ) as camera:
+            print('camera setup')
+            camera.rotation = 0   # 180 to turn it upside down
+            time.sleep(2)  # let the camera warm up and set gain/white balance
+
+            print('starting recording')
+            output = RecordingOutput()
+            output.fwidth = fwidth
+            output.fheight = fheight
+            output.t0 = time.time()  # seconds
+            t_prev = output.t0
+
+            camera.start_recording(output, 'yuv')
+
             while True:
                 # Inner try / except is used to wait for a controller to become available, at which point we
                 # bind to it and enter a loop where we read axis values and send commands to the motors.
@@ -87,13 +128,6 @@ def run():
                         # Loop until the joystick disconnects, or we deliberately stop by raising a
                         # RobotStopException
                         while joystick.connected:
-                                        
-                            date = datetime.now()
-                            timestamp = date.strftime('%H-%M-%S')
-                            #name = folderName + '/' + 'image' + timestamp + '-' + str(frame) + '.data'
-                            name = 'image' + timestamp + '-' + str(frame) + '.jpeg'
-                            frame = frame + 1
-                            camera.capture(name, format='jpeg')
                             if not battery_checked:
                                 battery_level = joystick.battery_level
                                 if battery_level:
@@ -166,6 +200,13 @@ def run():
         # This exception will be raised when the home button is pressed, or the controller
         # battery is flat, at which point we should stop the motors.
         send_motor_speed_message(link=link)
+        if camera.recording:
+            camera.stop_recording()
 
+        dt = time.time() - t_prev
+        print(f'total frames: {output.frame_cnt}')
+        print(f'time recording: {round(dt, 2)}s')
+        fps = output.frame_cnt / dt
+        print(f'fps: {round(fps, 2)}s')
 if __name__ == "__main__":
     run()
