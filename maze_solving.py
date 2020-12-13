@@ -239,7 +239,7 @@ print_m(m)
 print(the_path)
 
 now = timer()
-t = now - prevgit checkout 
+t = now - prev
 print("time: {}".format(t))
 
 
