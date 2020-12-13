@@ -6,4 +6,4 @@ pip install pillow
 pip install numpy
 pip install mahotas
 pip install networkx
-
+pip install --upgrade matplotlib
