@@ -11,11 +11,11 @@ FPS_MODE = FPS_MODE_OFF
 
 WRITE_IMAGES = True  # False
 
-def write_luminance_disk(y_data, frame):
+def write_luminance_disk(data, frame, channel):
     date = datetime.now()
     timestamp = date.strftime('%H-%M-%S')
-    filename = f'frame-{frame}-{timestamp}.bmp'
-    im = Image.fromarray(y_data, mode='L')  # using luminance mode
+    filename = f'frame-{frame}-{timestamp}-{channel}.bmp'
+    im = Image.fromarray(data, mode='L')  # if using luminance mode
     im.save(filename)
 
 
@@ -39,10 +39,23 @@ class RecordingOutput(object):
             dtype=np.uint8,
             count=self.fwidth * self.fheight
         ).reshape((self.fheight, self.fwidth))
-
+        u_offset = self.fwidth * self.fheight
+        u_data = np.frombuffer(buf,
+            dtype=np.uint8,
+            count=self.fwidth//2 * self.fheight//2,
+            offset=u_offset
+        ).reshape((self.fheight//2, self.fwidth//2))
+        v_offset = self.fwidth * self.fheight + self.fwidth//2 * self.fheight//2
+        v_data = np.frombuffer(buf,
+            dtype=np.uint8,
+            count=self.fwidth//2 * self.fheight//2,
+            offset=int(v_offset)
+        ).reshape((self.fheight//2, self.fwidth//2))
         # actual processing
         if WRITE_IMAGES and self.frame_cnt % 20 == 0:
-            write_luminance_disk(y_data, self.frame_cnt)
+            write_luminance_disk(y_data, self.frame_cnt, 'Y')
+            write_luminance_disk(u_data, self.frame_cnt, 'U')
+            write_luminance_disk(v_data, self.frame_cnt, 'V')
 
         self.frame_cnt += 1
 
