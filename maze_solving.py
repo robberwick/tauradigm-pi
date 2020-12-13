@@ -54,7 +54,7 @@ large_maze = [
     [1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
     [1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1],
     [1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
 ]
@@ -129,7 +129,7 @@ massive_maze = [
 sm_start = 14, 0
 sm_end = 1, 13
 
-lg_start = 29, 0
+lg_start = 29, 1
 lg_end = 3, 27
 
 massive_start = 60, 0
@@ -138,9 +138,9 @@ massive_end = 7, 50
 zoom = 20
 borders = 6
 
-a = small_maze
-start = sm_start
-end = sm_end
+a = large_maze
+start = lg_start
+end = lg_end
 
 def make_step(k):
   for i in range(len(m)):
@@ -191,14 +191,14 @@ def draw_matrix(a,m, the_path = []):
     images.append(im)
 
 def draw_maze(a):
-    im = Image.new('RGB', (len(a[0]), len(a)), (0, 0, 0))
+    im = Image.new('RGB', (zoom * len(a[0]), zoom * len(a)), (0, 0, 0))
     draw = ImageDraw.Draw(im)
     for i in range(len(a)):
         for j in range(len(a[i])):
             color = (255, 255, 255)
             if a[i][j] == 1:
                 color = (0, 0, 0)
-            draw.rectangle((j, i, j-1, i-1), fill=color)
+            draw.rectangle((j*zoom, i*zoom, j*zoom+zoom-1, i*zoom+zoom-1), fill=color)
     maze.append(im)
 
 
@@ -259,7 +259,8 @@ images[0].save('maze.gif',
                save_all=True, append_images=images[1:],
                optimize=False, duration=1, loop=0)
 
+zoom=1
 draw_maze(a)
-maze[0].save('maze.jpg', "JPEG")
+maze[0].save('maze.png', "PNG")
 
 
