@@ -146,6 +146,17 @@ def endPoints(skel):
     ep = ep1+ep2+ep3+ep4+ep5+ep6+ep7+ep8
     return ep > 0
 
+
+def edges_from_C8skel(c8skeleton):
+    '''given a skeleton defined on c8 neighborhood (use mahotas),
+     \ returns labeled edges
+    '''
+    branchedP = branchedPoints(c8skeleton, showSE = False) > 0
+    endP = endPoints(c8skeleton) > 0
+    edges = np.logical_not(branchedP)*c8skeleton
+    label_edges,ne = mh.label(edges)
+    return label_edges
+
 def pruning(skeleton, size):
     '''remove iteratively end points "size" 
        times from the skeleton
@@ -176,6 +187,7 @@ skeleton_im.save("skeleton.png", format="PNG")
 #skeleton = pruning(skeleton(1))
 
 bp = branchedPoints(skeleton>0)
+l_bp,_ = mh.label(bp)
 
 bp_im = Image.fromarray(bp)
 bp_im.save("bp.png", format="PNG")
@@ -183,3 +195,9 @@ ep = endPoints(skeleton)
 
 ep_im = Image.fromarray(ep)
 ep_im.save("ep.png", format="PNG")
+
+edges_np = edges_from_C8skel(skeleton)
+edges_np *= (255//edges_np.max())
+edges_im = Image.fromarray(np.uint8(edges_np), 'L')
+edges_im.save("edges.png", format="PNG")
+l_ep = ep * edges_np
