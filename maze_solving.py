@@ -201,6 +201,16 @@ def draw_maze(a):
             draw.rectangle((j*zoom, i*zoom, j*zoom+zoom-1, i*zoom+zoom-1), fill=color)
     maze.append(im)
 
+def trim_path(path):
+    point = 1
+    while (point < (len(path)-1)):
+        dy = abs(path[point][0] - path[point-1][0])
+        dx = abs(path[point][1] - path[point+1][1])
+        #print(f'dx: {dx}, dy: {dy}')
+        if (dx == 1 and dy == 1):
+          del path[point]
+        point += 1
+    return path
 
 m = []
 for i in range(len(a)):
@@ -249,6 +259,8 @@ for i in range(10):
 
 print_m(m)
 print(the_path)
+trimmed_path = trim_path(the_path)
+print(trimmed_path)
 
 now = timer()
 t = now - prev
