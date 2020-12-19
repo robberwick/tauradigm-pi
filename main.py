@@ -19,7 +19,7 @@ logger.remove()
 logger.level("DATA", no=15)
 fmt = "{time} - {name} - {level} - {message}"
 logger.add("logs/debug_1.log", level="DEBUG", format=fmt, rotation="5 MB", filter=non_data_filter)
-logger.add(sys.stdout, level="INFO", format=fmt, filter=non_data_filter)
+logger.add(sys.stdout, level="SUCCESS", format=fmt, filter=non_data_filter)
 logger.add("logs/info_1.log", level="INFO", format=fmt, rotation="5 MB", filter=non_data_filter)
 logger.add("logs/data_{time}.log", level="DATA", format="{message}", filter=data_filter)
 log_data = None
@@ -48,7 +48,7 @@ RESOLUTION = (640, 480)
 fwidth = (RESOLUTION[0] + 31) // 32 * 32
 fheight = (RESOLUTION[1] + 15) // 16 * 16
 print(f'frame size {fwidth}x{fheight}')
-
+lineFollowingSpeed = 0.35
 
 class RobotStopException(Exception):
     pass
@@ -94,6 +94,7 @@ def receive_sensor_data(link=None):
     return struct.unpack(fmt, response)
 
 def run():
+    auto = False
     try:
         link = txfer.SerialTransfer('/dev/serial0', baud=1000000, restrict_ports=False)
         battery_checked = False
@@ -153,14 +154,16 @@ def run():
                                     send_button_press_message(link,button=b'c')
                                     logger.info('circle button pressed')
                                 if joystick.presses.triangle:
-                                    send_button_press_message(link,button=b't')
+                                    #send_button_press_message(link,button=b't')
                                     logger.info('triangle button pressed')
+                                    auto = True
                                 if joystick.presses.square:
                                     send_button_press_message(link,button=b's')
                                     logger.info('square button pressed')
                                 if joystick.presses.cross:
-                                    send_button_press_message(link,button=b'x')
+                                    #send_button_press_message(link,button=b'x')
                                     logger.info('cross button pressed')
+                                    auto = False
                                 if joystick.presses.dleft:
                                     send_button_press_message(link,button=b'l')
                                     logger.info('D pad left pressed')
@@ -179,9 +182,14 @@ def run():
                             if 'home' in joystick.presses:
                                 logger.info('Home button pressed - exiting')
                                 raise RobotStopException()
+                            if auto:
+                                power_left, power_right = mixer(yaw=output.turnCommand, throttle=-lineFollowingSpeed)
+                                print("     ", end='\r', flush=True)
+                                message = f'line: {output.turnCommand:.2f}, power = {power_left}, {power_right}'
+                                print(message, end='\r', flush=True)
                             send_motor_speed_message(link=link, left=power_left, right=power_right)
                             if link.available():
-                                log_data = (time.time(),)+ receive_sensor_data(link=link)
+                                log_data = (time.time(),output.linePosition,)+ receive_sensor_data(link=link) 
                                 logger.log('DATA', ','.join(map(str,log_data)))
                             else:
                                 link_msg = 'no data - link status: {}'.format(link.status)
