@@ -109,12 +109,13 @@ def run():
 
             print('starting recording')
             output = RecordingOutput()
-            output.fwidth = fwidth
-            output.fheight = fheight
+            reductionFactor = 6.666
+            output.fwidth = 96 #int(fwidth/reductionFactor)
+            output.fheight = 80 #int(fheight/reductionFactor)
             output.t0 = time.time()  # seconds
             t_prev = output.t0
 
-            camera.start_recording(output, 'yuv')
+            camera.start_recording(output, 'yuv', resize=(output.fwidth, output.fheight))
 
             while True:
                 # Inner try / except is used to wait for a controller to become available, at which point we
@@ -189,7 +190,7 @@ def run():
                                 print(message, end='\r', flush=True)
                             send_motor_speed_message(link=link, left=power_left, right=power_right)
                             if link.available():
-                                log_data = (time.time(),output.linePosition,)+ receive_sensor_data(link=link) 
+                                log_data = (time.time(), output.linePosition, output.lineWidth,)+ receive_sensor_data(link=link) 
                                 logger.log('DATA', ','.join(map(str,log_data)))
                             else:
                                 link_msg = 'no data - link status: {}'.format(link.status)

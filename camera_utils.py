@@ -9,7 +9,7 @@ FPS_MODE_T0 = 1
 FPS_MODE_FBF = 2
 FPS_MODE = FPS_MODE_OFF
 
-WRITE_IMAGES = False
+WRITE_IMAGES = True #False
 
 def write_luminance_disk(data, frame, channel):
     date = datetime.now()
@@ -21,24 +21,24 @@ def write_luminance_disk(data, frame, channel):
 def processRow(receivedRow):
     minval = 255
     maxval = 0
-    row = receivedRow.copy()
-    for val in row:
-        if val < minval:
-            minval = val
-        if val > maxval:
-            maxval = val
+    rowCopy = receivedRow.copy() 
+    row = memoryview(rowCopy) #[y*w:(y+1)*w]
+    #for val in rowCopy:
+    #    if val < minval:
+    #        minval = val
+    #    if val > maxval:
+    #        maxval = val
+    #diff = maxval - minval
 
-    diff = maxval - minval
+    #factor = 1
+    #if diff != 0:
+    #    factor = 255/diff
 
-    factor = 1
-    if diff != 0:
-        factor = 255/diff
-
-    x = 0
-    for val in row:
-        val = int((val - minval) * factor)
-        row[x] = val
-        x = x + 1
+    #x = 0
+    #for val in row:
+    #    val = int((val - minval) * factor)
+    #    row[x] = val
+    #    x = x + 1
 
 
     # Note that this could be combined into the stretch step above (just
@@ -47,23 +47,25 @@ def processRow(receivedRow):
     x = 0
     weightedAverage = 0
     lineCount = 0
+    threshold = 125
     for val in row:
-        if val > 128:
-            val = 255
+        if val > threshold:
+#            val = 255
+            pass
         else:
-            val = 0
+#            val = 0
             weightedAverage += x
             lineCount += 1
-        row[x] = val
+#       row[x] = val
         x = x + 1
-    maxLineWidth = 50
-    if lineCount < maxLineWidth:
+    maxLineWidth = 1000
+    if lineCount < maxLineWidth and lineCount >0:
         linePosition = 2 * weightedAverage / len(row) / lineCount
         linePosition -= 1
     else:
         linePosition = -2
 
-    return linePosition
+    return linePosition, lineCount
     
 
 class RecordingOutput(object):
@@ -78,7 +80,9 @@ class RecordingOutput(object):
         self.t0 = 0
         self.turnCommand = 0
         self.pGain = 0.25
-        self.linePosition = 0
+        self.linePosition = [0] * 50
+        self.lineWidth = [0] * 50
+
 
     def write(self, buf):
         global t_prev
@@ -107,11 +111,15 @@ class RecordingOutput(object):
             write_luminance_disk(u_data, self.frame_cnt, 'U')
             write_luminance_disk(v_data, self.frame_cnt, 'V')
         self.frame_cnt += 1
-        newLinePosition = processRow(u_data[180])
-        if newLinePosition != -2:
-            self.linePosition = newLinePosition
+        sliceStep = 1
+        for i in range(0, self.fheight//2, sliceStep):
+            newLinePosition, newLineWidth = processRow(u_data[i])
+            if newLinePosition != -2:
+                index = int(i/sliceStep)
+                self.linePosition[index] = newLinePosition
+                self.lineWidth[index] = newLineWidth
         maxTurnCorrection = 0.25
-        self.turnCommand = min(self.pGain * self.linePosition, maxTurnCorrection)
+        self.turnCommand = min(self.pGain * self.linePosition[35], maxTurnCorrection)
         self.turnCommand = max(self.turnCommand, -maxTurnCorrection)
 
         if FPS_MODE is not FPS_MODE_OFF:
