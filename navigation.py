@@ -101,9 +101,13 @@ class Navigator():
         except WaypointError:
             raise
 
-    def distance_to_waypoint(self, current_pos: Pose):
+    def distance_to_waypoint(self, pose: Pose):
         """returns distance 'as the crow flies' to the target pose"""
         # hypotenuse of dx, dy triangle gives distance, using h^2=x^2+y^2
         if self.target_waypoint is None:
             return 0
-        return hypot(self.target_waypoint.x - current_pos.x, self.target_waypoint.y - current_pos.y)
+        return hypot(self.target_waypoint.x - pose.x, self.target_waypoint.y - pose.y)
+
+    def should_increment_waypoint(self, pose: Pose) -> bool:
+        """Returns True if supplied pose is within the given tolerance"""
+        return self.distance_to_waypoint(pose) <=  self.position_tolerance
