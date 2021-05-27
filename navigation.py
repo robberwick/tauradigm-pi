@@ -50,7 +50,8 @@ class Navigator():
         if index is None:
             raise WaypointNotSetError("Could not get waypoint - index is None")
         try:
-             return self.waypoints[index]
+            coords = self.waypoints[index]
+            return Pose(coords['x'], coords['y'])
         except IndexError:
             raise WaypointNotFoundError(f'Could not get waypoint at {index}')
 
