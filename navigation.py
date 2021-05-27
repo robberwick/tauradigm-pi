@@ -20,7 +20,7 @@ class Pose():
     def __repr__(self) -> str:
         return f"Pose({self.x!r}, {self.y!r}, {self.heading!r})"
 
-Waypoints = list[Pose]
+Waypoints = List[Pose]
 
 class WaypointError(Exception):
     pass
