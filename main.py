@@ -1,13 +1,18 @@
+from json.decoder import JSONDecodeError
 from approxeng.input.selectbinder import ControllerResource
 import array
+import json
 import random
 import struct
 import sys
 import time
 from collections import namedtuple
+
+import click
 from loguru import logger
 
 from pySerialTransfer import pySerialTransfer as txfer
+import navigation
 
 data_filter = lambda record: record["level"].name == "DATA"
 non_data_filter = lambda record: record["level"].name != "DATA"
@@ -51,17 +56,37 @@ def send_motor_speed_message(link=None, left=0, right=0):
     # print('sending: {}'.format(payload))
     link.send(len(payload))
 
-def receive_sensor_data(link=None):
+def send_waypoint_message(link=None, pose=None):
+    # TODO format and send the waypoint message here
+    pass
+
+def unpack_log_message(link=None):
     fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3
 
     response = array.array('B', link.rxBuff[:link.bytesRead]).tobytes()
 
     return struct.unpack(fmt, response)
 
-def run():
+def extract_current_pose(log_vars):
+    """Extract the current pose from the tuple of values extracted from the log message"""
+    *_, x, y, heading = log_vars
+    pose = navigation.Pose(x, y, heading)
+
+@click.command()
+@click.option('--waypoints', default=None, help='waypoint file')
+def run(waypoints=None):
+    waypoint_list = None
+    try:
+        with open(waypoints) as fp:
+            waypoint_list = json.load(fp)
+    except (FileNotFoundError, JSONDecodeError):
+        logger.error(f"Could not open waypoints file: {waypoints}")
+        return
+    navigator = navigation.Navigator(waypoints=waypoint_list)
     try:
         link = txfer.SerialTransfer('/dev/serial0', baud=1000000, restrict_ports=False)
         battery_checked = False
+
 
         while True:
             # Inner try / except is used to wait for a controller to become available, at which point we
@@ -123,8 +148,22 @@ def run():
                                 power_right = 0
                         send_motor_speed_message(link=link, left=power_left, right=power_right)
                         if link.available():
-                            log_data = (time.time(),)+ receive_sensor_data(link=link)
+                            # unpack the incoming log message into a tuple
+                            message_values = unpack_log_message(link=link)
+
+                            # log the values
+                            log_data = (time.time(),) + message_values
                             logger.log('DATA', ','.join(map(str,log_data)))
+
+                            # Get the current pose from the message values
+                            current_pose = extract_current_pose(message_values)
+                            # Is the current position close enough to the target waypoint to select the next one?
+                            if navigator.should_increment_waypoint(current_pose):
+                                navigator.increment_waypoint_index()
+
+                            # send the waypoint message to the teensy
+                            send_waypoint_message(link=link, pose=navigator.target_waypoint)
+
                         else:
                             link_msg = 'no data - link status: {}'.format(link.status)
                             logger.info(link_msg)
