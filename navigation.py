@@ -43,7 +43,7 @@ class Navigator():
 
     def _get_waypoint_at_index(self, index: Optional[int]) -> Pose:
         # raise an exception if the list is empty
-        if len(self.waypoints) is 0:
+        if len(self.waypoints) == 0:
             raise WaypointListEmptyError
 
         # raise an exception if the given index is None
