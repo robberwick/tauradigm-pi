@@ -35,10 +35,11 @@ class WaypointNotSetError(WaypointError):
     pass
 
 class Navigator():
-    def __init__(self, waypoints: Optional[Waypoints]=None) -> None:
+    def __init__(self, waypoints: Optional[Waypoints]=None, position_tolerance: Optional[int]=100) -> None:
         self.waypoints = waypoints if waypoints is not None else []
         self.current_waypoint_index: Optional[int] = None
         self.target_waypoint_index: Optional[int] = None
+        self.position_tolerance = position_tolerance
 
     def _get_waypoint_at_index(self, index: Optional[int]) -> Pose:
         # raise an exception if the list is empty
