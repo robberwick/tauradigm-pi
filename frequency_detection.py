@@ -19,8 +19,9 @@ def int_or_str(text):
 
 try:
     columns, _ = shutil.get_terminal_size()
+    columns = 40
 except AttributeError:
-    columns = 100
+    columns = 40
 
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument(
@@ -48,7 +49,7 @@ parser.add_argument(
     help='initial gain factor (default %(default)s)')
 parser.add_argument(
     '-r', '--range', type=float, nargs=2,
-    metavar=('LOW', 'HIGH'), default=[320, 1200],
+    metavar=('LOW', 'HIGH'), default=[100, 1200],
     help='frequency range (default %(default)s Hz)')
 args = parser.parse_args(remaining)
 low, high = args.range
@@ -73,7 +74,8 @@ try:
     delta_f = (high - low) / (args.columns - 1)
     fftsize = math.ceil(samplerate / delta_f)
     low_bin = math.floor(low / delta_f)
-
+    last_volume =[0]
+    last_volume[0] = 0
 
     def callback(indata, frames, time, status):
         if status:
@@ -84,8 +86,12 @@ try:
             magnitude *= args.gain / fftsize
             max_component = np.amax(magnitude)
             dominant_frequency = np.where(magnitude == np.amax(magnitude))[0][0]
-            if (max_component > 0.1):
+            if (max_component > 0.1) and (max_component > last_volume[0]):
+                first_frequency = np.argmax(magnitude > max_component/4)
+                print("new")
+                print(first_frequency)
                 df = dominant_frequency
+                print(df)
                 print("1*") if (100 < df < 120) else ""
                 print("2*") if (120 < df < 143) else ""
                 print("3*") if (143 < df < 160) else ""
@@ -94,6 +100,7 @@ try:
 #            line = (gradient[int(np.clip(x, 0, 1) * (len(gradient) - 1))]
 #                    for x in magnitude[low_bin:low_bin + args.columns])
 #            print(*line, sep=' ', end='\x1b[0m\n')
+            last_volume[0] = max_component
         else:
             print('no input')
 
