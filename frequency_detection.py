@@ -9,7 +9,6 @@ import sounddevice as sd
 
 usage_line = ' press <enter> to quit, +<enter> or -<enter> to change scaling '
 
-
 def int_or_str(text):
     """Helper function for argument parsing."""
     try:
@@ -21,7 +20,7 @@ def int_or_str(text):
 try:
     columns, _ = shutil.get_terminal_size()
 except AttributeError:
-    columns = 80
+    columns = 100
 
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument(
@@ -49,7 +48,7 @@ parser.add_argument(
     help='initial gain factor (default %(default)s)')
 parser.add_argument(
     '-r', '--range', type=float, nargs=2,
-    metavar=('LOW', 'HIGH'), default=[100, 2000],
+    metavar=('LOW', 'HIGH'), default=[320, 1200],
     help='frequency range (default %(default)s Hz)')
 args = parser.parse_args(remaining)
 low, high = args.range
@@ -75,6 +74,7 @@ try:
     fftsize = math.ceil(samplerate / delta_f)
     low_bin = math.floor(low / delta_f)
 
+
     def callback(indata, frames, time, status):
         if status:
             text = ' ' + str(status) + ' '
@@ -82,13 +82,18 @@ try:
         if any(indata):
             magnitude = np.abs(np.fft.rfft(indata[:, 0], n=fftsize))
             magnitude *= args.gain / fftsize
-            maxcomponent = np.amax(magnitude)
-            dominantfrequency = np.where(magnitude == np.amax(magnitude))
-            print(dominantfrequency[0][0])
-            print(maxcomponent)
-            line = (gradient[int(np.clip(x, 0, 1) * (len(gradient) - 1))]
-                    for x in magnitude[low_bin:low_bin + args.columns])
-            print(*line, sep=' ', end='\x1b[0m\n')
+            max_component = np.amax(magnitude)
+            dominant_frequency = np.where(magnitude == np.amax(magnitude))[0][0]
+            if (max_component > 0.1):
+                df = dominant_frequency
+                print("1*") if (100 < df < 120) else ""
+                print("2*") if (120 < df < 143) else ""
+                print("3*") if (143 < df < 160) else ""
+                print("4*") if (160 < df < 179) else ""
+                print("5*") if (179 < df < 200) else ""
+#            line = (gradient[int(np.clip(x, 0, 1) * (len(gradient) - 1))]
+#                    for x in magnitude[low_bin:low_bin + args.columns])
+#            print(*line, sep=' ', end='\x1b[0m\n')
         else:
             print('no input')
 
