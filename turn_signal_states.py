@@ -10,15 +10,16 @@ class CustomStateMachine(Machine):
 
 class CaptureSequence(object):
     states = [{'name': 'wait sequence start'},
-              {'name': 'wait signal', 'timeout': 5, 'on_timeout': 'timed_out'},
+              {'name': 'wait signal', 'timeout': 3, 'on_timeout': 'timed_out'},
               {'name': 'sequence complete'}]
 
     def __init__(self):
         self.current_signal_number = 0
         self.number_of_turns = 3
-        self.auto_transitions=False
-        #self.waiting_for_signal = False
-        self.turn_sequence = [self.number_of_turns]
+        self.auto_transitions = False
+        #boolean to trackj if we're wiaitng for a delimiter or a turn signal
+        self.waiting_for_turn = False
+        self.turn_sequence = [None] * self.number_of_turns
 
         self.signal_key = {
             '1*': 'delimiter',
@@ -32,12 +33,15 @@ class CaptureSequence(object):
         self.machine.add_transition('signal_received', 'wait signal', '=', after=['process_signal'])
         self.machine.add_transition('complete_sequence_received', 'wait signal', 'sequence complete')
         self.machine.add_transition('reset', 'sequence complete', 'wait sequence start')
-        self.machine.add_transition('timed_out', '*', 'wait sequence start')
+        self.machine.add_transition('timed_out', '*', 'wait sequence start', before=['timing_out'])
 
+    def timing_out(self, note):
+        print("timed out")
 
-    def proces_signal(self, note):
+    def process_signal(self, note):
         signal =  self.signal_key[note]
-        if self.waiting_for_signal:
+        print("signal: " + signal + " receieved")
+        if self.waiting_for_turn:
             if signal == 'delimiter':
                 #waiting for a signal but still getting delimiter, carry on waiting
                 pass
@@ -48,11 +52,12 @@ class CaptureSequence(object):
                 self.waiting_for_signal = False
                 if self.current_signal_number >= self.number_of_turns:
                     #we got all the turns we were expecting
+                    print("full sequence collected, ready for retrieval")
                     self.complete_sequence_received()
         else:
             if signal == 'delimiter':
                 #waiting for delimiter and got it, so next we're looking for a signal
-                self.waiting_for_signal = True
+                self.waiting_for_turn = True
             else:
                 #we got another signal whilst waiting for a delimiter, ignore it
                 pass
