@@ -19,9 +19,9 @@ def int_or_str(text):
 
 try:
     columns, _ = shutil.get_terminal_size()
-    columns = 40
+    columns = 25
 except AttributeError:
-    columns = 40
+    columns = 25
 
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument(
@@ -49,7 +49,7 @@ parser.add_argument(
     help='initial gain factor (default %(default)s)')
 parser.add_argument(
     '-r', '--range', type=float, nargs=2,
-    metavar=('LOW', 'HIGH'), default=[100, 1200],
+    metavar=('LOW', 'HIGH'), default=[50, 600],
     help='frequency range (default %(default)s Hz)')
 args = parser.parse_args(remaining)
 low, high = args.range
@@ -86,17 +86,39 @@ try:
             magnitude *= args.gain / fftsize
             max_component = np.amax(magnitude)
             dominant_frequency = np.where(magnitude == np.amax(magnitude))[0][0]
-            if (max_component > 0.1) and (max_component > last_volume[0]):
+            if (max_component > 0.2) and (max_component > last_volume[0]):
+                components = np.where(magnitude>0.2)
                 first_frequency = np.argmax(magnitude > max_component/4)
                 print("new")
-                print(first_frequency)
+#                print(first_frequency)
+#                print(components)
                 df = dominant_frequency
-                print(df)
-                print("1*") if (100 < df < 120) else ""
-                print("2*") if (120 < df < 143) else ""
-                print("3*") if (143 < df < 160) else ""
-                print("4*") if (160 < df < 179) else ""
-                print("5*") if (179 < df < 200) else ""
+#                print(df)
+                one = 35*magnitude[6] + magnitude[20] + magnitude[45] + magnitude[46] + 1.5*magnitude[47]
+                two = 15*magnitude[8] + 6*magnitude[9] + magnitude[23] + magnitude[54]
+                three = 25*magnitude[11] + 1.5*magnitude[25] + 2*magnitude[26] + 2*magnitude[62] + magnitude[63] + magnitude[99] + magnitude[100]
+                four = 7*magnitude[13] + 1.2*magnitude[27] + magnitude[67] + magnitude[107]
+                five = 15*magnitude[16] + magnitude[30] + 1.5*magnitude[45]
+                six = 10*magnitude[19] + 2*magnitude[34] + magnitude[87]
+                seven = 8*magnitude[7] + 2.5*magnitude[22] + magnitude[36] + magnitude[37] + magnitude[47]
+                onestar = 5*magnitude[25] + 9*magnitude[26] + 2*magnitude[40] + magnitude[41] + 2*magnitude[55] + magnitude[56] + magnitude[92]
+                twostar = 5*magnitude[31] + 5*magnitude[32] + 1.5*magnitude[46]
+                threestar = 4*magnitude[37] + 4*magnitude[38] + magnitude[52]
+                fourstar = magnitude[25] + 8*magnitude[40] + magnitude[54] + magnitude[55] + 10*magnitude[69]
+                fivestar = magnitude[45] + magnitude[46] + 1.5*magnitude[47] + 12*magnitude[61]
+                max_value=max(one, two, three, four, five, six, seven, onestar, twostar, threestar, fourstar, fivestar)
+                print("1") if one == max_value else ""
+                print("2") if two == max_value else ""
+                print("3") if three == max_value else ""
+                print("4") if four == max_value else ""
+                print("5") if five == max_value else ""
+                print("6") if six == max_value else ""
+                print("7") if seven == max_value else ""
+                print("1*") if onestar == max_value else ""
+                print("2*") if twostar == max_value else ""
+                print("3*") if threestar == max_value else ""
+                print("4*") if fourstar == max_value else ""
+                print("5*") if fivestar == max_value else ""
 #            line = (gradient[int(np.clip(x, 0, 1) * (len(gradient) - 1))]
 #                    for x in magnitude[low_bin:low_bin + args.columns])
 #            print(*line, sep=' ', end='\x1b[0m\n')
