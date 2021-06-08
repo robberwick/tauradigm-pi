@@ -10,7 +10,7 @@ class CustomStateMachine(Machine):
 
 class CaptureSequence(object):
     states = [{'name': 'wait sequence start'},
-              {'name': 'wait signal', 'timeout': 3, 'on_timeout': 'timed_out'},
+              {'name': 'wait signal', 'timeout': 10, 'on_timeout': 'timed_out'},
               {'name': 'sequence complete'}]
 
     def __init__(self):
@@ -35,7 +35,7 @@ class CaptureSequence(object):
         self.machine.add_transition('reset', 'sequence complete', 'wait sequence start')
         self.machine.add_transition('timed_out', '*', 'wait sequence start', before=['timing_out'])
 
-    def timing_out(self, note):
+    def timing_out(self):
         print("timed out")
 
     def process_signal(self, note):
@@ -49,7 +49,8 @@ class CaptureSequence(object):
                 #waiting for signal and got a signal, process it and move on
                 self.turn_sequence[self.current_signal_number] = signal
                 self.current_signal_number += 1
-                self.waiting_for_signal = False
+                print("current turn number: " + str(self.current_signal_number))
+                self.waiting_for_turn = False
                 if self.current_signal_number >= self.number_of_turns:
                     #we got all the turns we were expecting
                     print("full sequence collected, ready for retrieval")
