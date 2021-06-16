@@ -57,8 +57,11 @@ def send_motor_speed_message(link=None, left=0, right=0):
     link.send(len(payload))
 
 def send_waypoint_message(link=None, pose=None):
-    # TODO format and send the waypoint message here
-    pass
+    payload = struct.pack('=bfff', 3, pose.x, pose.y, pose.heading)
+    for i, b in enumerate(list(payload)):
+        link.txBuff[i] = b
+    # print('sending: {}'.format(payload))
+    link.send(len(payload))
 
 def unpack_log_message(link=None):
     fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3
