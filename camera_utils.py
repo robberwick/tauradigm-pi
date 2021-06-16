@@ -80,8 +80,8 @@ class RecordingOutput(object):
         self.t0 = 0
         self.turnCommand = 0
         self.pGain = 0.25
-        self.linePosition = [0] * 50
-        self.lineWidth = [0] * 50
+        self.linePosition = [0] * 100
+        self.lineWidth = [0] * 100
 
 
     def write(self, buf):
@@ -111,7 +111,7 @@ class RecordingOutput(object):
             write_luminance_disk(u_data, self.frame_cnt, 'U')
             write_luminance_disk(v_data, self.frame_cnt, 'V')
         self.frame_cnt += 1
-        sliceStep = 1
+        sliceStep = 4
         for i in range(0, self.fheight//2, sliceStep):
             newLinePosition, newLineWidth = processRow(u_data[i])
             if newLinePosition != -2:

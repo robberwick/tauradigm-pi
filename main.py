@@ -27,18 +27,18 @@ log_data = None
 RECORD_TIME = 5  # number of seconds to record
 
 # FRAME_RATE = 90
-FRAME_RATE = 120
+FRAME_RATE = 90
 # FRAME_RATE = 200
 
 # SENSOR_MODE = 4  # 1640x1232, full FoV, binning 2x2
 # RESOLUTION = (1640, 1232)
 # RESOLUTION = (820, 616)
 
-# SENSOR_MODE = 6  # 1280x720, partial FoV, binning 2x2
-# RESOLUTION = (1280, 720)
+SENSOR_MODE = 6  # 1280x720, partial FoV, binning 2x2
+RESOLUTION = (1280, 720)
 
-SENSOR_MODE = 7  # 640x480, partial FoV, binning 2x2
-RESOLUTION = (640, 480)
+#SENSOR_MODE = 7  # 640x480, partial FoV, binning 2x2
+#RESOLUTION = (640, 480)
 
 
 # Calculate the actual image size in the stream (accounting for rounding
@@ -110,8 +110,10 @@ def run():
             print('starting recording')
             output = RecordingOutput()
             reductionFactor = 6.666
-            output.fwidth = 96 #int(fwidth/reductionFactor)
-            output.fheight = 80 #int(fheight/reductionFactor)
+#            print(int(fwidth/reductionFactor))
+ #           print(int(fheight/reductionFactor))
+            output.fwidth = 96 #192 #96 #int(fwidth/reductionFactor)
+            output.fheight = 48 #112 #80 #int(fheight/reductionFactor)
             output.t0 = time.time()  # seconds
             t_prev = output.t0
 
