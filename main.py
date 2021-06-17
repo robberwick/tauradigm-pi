@@ -175,14 +175,13 @@ def run(waypoints=None):
                             # Get the current pose from the message values
                             current_pose = extract_current_pose(message_values)
                             # Is the current position close enough to the target waypoint to select the next one?
-                            print (current_pose)
                             if current_pose is not None:
                                 if navigator.should_increment_waypoint(current_pose):
                                     navigator.increment_waypoint_index()
 
                             # send the waypoint message to the teensy
                             send_waypoint_message(link=link, pose=navigator.target_waypoint)
-
+                            print(navigator.target_waypoint)
                         else:
                             link_msg = 'no data - link status: {}'.format(link.status)
                             logger.info(link_msg)
