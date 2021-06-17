@@ -57,11 +57,12 @@ def send_motor_speed_message(link=None, left=0, right=0):
     link.send(len(payload))
 
 def send_waypoint_message(link=None, pose=None):
-    payload = struct.pack('=bfff', 3, pose.x, pose.y, pose.heading)
-    for i, b in enumerate(list(payload)):
-        link.txBuff[i] = b
-    # print('sending: {}'.format(payload))
-    link.send(len(payload))
+    if pose:
+        payload = struct.pack('=bfff', 3, pose.x, pose.y, pose.heading)
+        for i, b in enumerate(list(payload)):
+            link.txBuff[i] = b
+        # print('sending: {}'.format(payload))
+        link.send(len(payload))
 
 def unpack_log_message(link=None):
     fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3
@@ -124,31 +125,39 @@ def run(waypoints=None):
                         # Print out any buttons that were pressed, if we had any
                         if joystick.has_presses:
                             logger.debug(joystick.presses)
+                        if joystick.has_presses:
+                            time.sleep(0.06)
+                            logger.debug(joystick.presses)
+                            if joystick.presses.circle:
+                                send_button_press_message(link,button=b'c')
+                                logger.info('circle button pressed')
+                            if joystick.presses.triangle:
+                                send_button_press_message(link,button=b't')
+                                logger.info('triangle button pressed')
+                            if joystick.presses.square:
+                                send_button_press_message(link,button=b's')
+                                logger.info('square button pressed')
+                            if joystick.presses.cross:
+                                send_button_press_message(link,button=b'x')
+                                logger.info('cross button pressed')
+                            if joystick.presses.dleft:
+                                send_button_press_message(link,button=b'l')
+                                logger.info('D pad left pressed')
+                            if joystick.presses.dright:
+                                send_button_press_message(link,button=b'r')
+                                logger.info('D pad right pressed')
+                            if joystick.presses.dup:
+                                send_button_press_message(link,button=b'u')
+                                logger.info('D pad up pressed')
+                            if joystick.presses.ddown:
+                                send_button_press_message(link,button=b'd')
+                                logger.info('D pad down pressed')
+                            time.sleep(0.06)
                         # If home was pressed, raise a RobotStopException to bail out of the loop
                         # Home is generally the PS button for playstation controllers, XBox for XBox etc
                         if 'home' in joystick.presses:
                             logger.info('Home button pressed - exiting')
                             raise RobotStopException()
-                        if joystick.circle:
-                            kp = 0.05
-                            if log_data is not None:
-                                target_distance = 540
-                                distance_sensor1 = min(2000, log_data[3])
-                                steering_compensation = int((distance_sensor1 - target_distance)* kp)
-                                lit_threshold = 750
-                                # light levels are at log_data[21] through to [24] inclusive
-                                # currently  #24 is not working
-                                # stop if max light level is above threshold
-                                stop = max(log_data[21:24]) >= lit_threshold
-
-                            else:
-                                stop = False
-                                steering_compensation = 0
-                            power_left = 26 + steering_compensation
-                            power_right = 20 - steering_compensation
-                            if stop:
-                                power_left = 0
-                                power_right = 0
                         send_motor_speed_message(link=link, left=power_left, right=power_right)
                         if link.available():
                             # unpack the incoming log message into a tuple
@@ -161,8 +170,9 @@ def run(waypoints=None):
                             # Get the current pose from the message values
                             current_pose = extract_current_pose(message_values)
                             # Is the current position close enough to the target waypoint to select the next one?
-                            if navigator.should_increment_waypoint(current_pose):
-                                navigator.increment_waypoint_index()
+                            if current_pose is not None:
+                                if navigator.should_increment_waypoint(current_pose):
+                                    navigator.increment_waypoint_index()
 
                             # send the waypoint message to the teensy
                             send_waypoint_message(link=link, pose=navigator.target_waypoint)
