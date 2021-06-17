@@ -71,7 +71,8 @@ def send_waypoint_message(link=None, pose=None):
         link.send(len(payload))
 
 def unpack_log_message(link=None):
-    fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3
+#    fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3
+    fmt = 'f' * 3 + 'f' * 3
 
     response = array.array('B', link.rxBuff[:link.bytesRead]).tobytes()
 
@@ -80,6 +81,7 @@ def unpack_log_message(link=None):
 def extract_current_pose(log_vars):
     """Extract the current pose from the tuple of values extracted from the log message"""
     *_, x, y, heading = log_vars
+    print(log_vars)
     return navigation.Pose(x, y, heading)
 
 @click.command()
@@ -94,7 +96,7 @@ def run(waypoints=None):
         return
     navigator = navigation.Navigator(waypoints=waypoint_list)
     try:
-        link = txfer.SerialTransfer('/dev/serial0', baud=1000000, restrict_ports=False)
+        link = txfer.SerialTransfer('/dev/serial0', baud=500000, restrict_ports=False)
         battery_checked = False
 
 
@@ -158,7 +160,9 @@ def run(waypoints=None):
                             if joystick.presses.ddown:
                                 send_button_press_message(link,button=b'd')
                                 logger.info('D pad down pressed')
-                            time.sleep(0.06)
+                                navigator.current_waypoint_index = None
+                                navigator.target_waypoint_index = None
+                            time.sleep(0.05)
                         # If home was pressed, raise a RobotStopException to bail out of the loop
                         # Home is generally the PS button for playstation controllers, XBox for XBox etc
                         if 'home' in joystick.presses:
@@ -178,14 +182,14 @@ def run(waypoints=None):
                             if current_pose is not None:
                                 if navigator.should_increment_waypoint(current_pose):
                                     navigator.increment_waypoint_index()
-
+                            time.sleep(0.02)
                             # send the waypoint message to the teensy
                             send_waypoint_message(link=link, pose=navigator.target_waypoint)
                             print(navigator.target_waypoint)
                         else:
                             link_msg = 'no data - link status: {}'.format(link.status)
                             logger.info(link_msg)
-                        time.sleep(0.02)
+                        time.sleep(0.03)
 
             except IOError:
                 # We get an IOError when using the ControllerResource if we don't have a controller yet,
