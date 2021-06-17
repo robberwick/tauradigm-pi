@@ -80,7 +80,7 @@ def unpack_log_message(link=None):
 def extract_current_pose(log_vars):
     """Extract the current pose from the tuple of values extracted from the log message"""
     *_, x, y, heading = log_vars
-    pose = navigation.Pose(x, y, heading)
+    return navigation.Pose(x, y, heading)
 
 @click.command()
 @click.option('--waypoints', default=None, help='waypoint file')
@@ -172,10 +172,10 @@ def run(waypoints=None):
                             # log the values
                             log_data = (time.time(),) + message_values
                             logger.log('DATA', ','.join(map(str,log_data)))
-
                             # Get the current pose from the message values
                             current_pose = extract_current_pose(message_values)
                             # Is the current position close enough to the target waypoint to select the next one?
+                            print (current_pose)
                             if current_pose is not None:
                                 if navigator.should_increment_waypoint(current_pose):
                                     navigator.increment_waypoint_index()
