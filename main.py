@@ -56,6 +56,12 @@ def send_motor_speed_message(link=None, left=0, right=0):
     # print('sending: {}'.format(payload))
     link.send(len(payload))
 
+def send_button_press_message(link=None, button=' '):
+    payload = struct.pack('=bc', 2, button)
+    for i, b in enumerate(list(payload)):
+        link.txBuff[i] = b
+        link.send(len(payload))
+ 
 def send_waypoint_message(link=None, pose=None):
     if pose:
         payload = struct.pack('=bfff', 3, pose.x, pose.y, pose.heading)
