@@ -19,54 +19,39 @@ def write_luminance_disk(data, frame, channel):
     im.save(filename)
 
 def processRow(receivedRow):
-    minval = 255
-    maxval = 0
     rowCopy = receivedRow.copy() 
-    row = memoryview(rowCopy) #[y*w:(y+1)*w]
-    #for val in rowCopy:
-    #    if val < minval:
-    #        minval = val
-    #    if val > maxval:
-    #        maxval = val
-    #diff = maxval - minval
+    row = memoryview(rowCopy)
 
-    #factor = 1
-    #if diff != 0:
-    #    factor = 255/diff
-
-    #x = 0
-    #for val in row:
-    #    val = int((val - minval) * factor)
-    #    row[x] = val
-    #    x = x + 1
-
-
-    # Note that this could be combined into the stretch step above (just
-    # threshold before assigning the stretched value back) to save a full
-    # iteration of the image if really necessary
-    x = 0
-    weightedAverage = 0
-    lineCount = 0
+    lineCounts = []
+    linePositions = []
     threshold = 125
+    in = False
+    start = 0
     for val in row:
         if val > threshold:
-#            val = 255
-            pass
+            #not line
+            if in:
+                lineCounts.append(row - start)
+                linePositions.append((start + row)/2)
+                in = False
         else:
-#            val = 0
-            weightedAverage += x
-            lineCount += 1
-#       row[x] = val
-        x = x + 1
-    maxLineWidth = 1000
-    if lineCount < maxLineWidth and lineCount >0:
-        linePosition = 2 * weightedAverage / len(row) / lineCount
-        linePosition -= 1
-    else:
-        linePosition = -2
+            #line
+            if !in:
+                start = row
+                in = True
+    if in and row-start >= 2:
+        lineCounts.append(row-start)
+        linePositions.append((start + row)/2)
 
-    return linePosition, lineCount
-    
+    maxLineWidth = 1000
+    if lineCounts[0] < maxLineWidth and lineCounts[0] >0:
+        linePositions[0] = 2 * weightedAverage / len(row) / lineCounts[0]
+        linePositions[0] -= 1
+    else:
+        linePositions[0] = -2
+
+    return linePositions, lineCounts
+
 
 class RecordingOutput(object):
     """
@@ -114,10 +99,10 @@ class RecordingOutput(object):
         sliceStep = 1
         for i in range(0, self.fheight//2, sliceStep):
             newLinePosition, newLineWidth = processRow(u_data[i])
-            if newLinePosition != -2:
+            if newLinePosition[0] != -2:
                 index = int(i/sliceStep)
-                self.linePosition[index] = newLinePosition
-                self.lineWidth[index] = newLineWidth
+                self.linePosition[index] = newLinePosition[0]
+                self.lineWidth[index] = newLineWidth[0]
         maxTurnCorrection = 0.25
         self.turnCommand = min(self.pGain * self.linePosition[35], maxTurnCorrection)
         self.turnCommand = max(self.turnCommand, -maxTurnCorrection)
