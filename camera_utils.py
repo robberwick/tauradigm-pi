@@ -23,27 +23,7 @@ def processRow(receivedRow):
     maxval = 0
     rowCopy = receivedRow.copy() 
     row = memoryview(rowCopy) #[y*w:(y+1)*w]
-    #for val in rowCopy:
-    #    if val < minval:
-    #        minval = val
-    #    if val > maxval:
-    #        maxval = val
-    #diff = maxval - minval
 
-    #factor = 1
-    #if diff != 0:
-    #    factor = 255/diff
-
-    #x = 0
-    #for val in row:
-    #    val = int((val - minval) * factor)
-    #    row[x] = val
-    #    x = x + 1
-
-
-    # Note that this could be combined into the stretch step above (just
-    # threshold before assigning the stretched value back) to save a full
-    # iteration of the image if really necessary
     x = 0
     weightedAverage = 0
     lineCount = 0
@@ -66,7 +46,22 @@ def processRow(receivedRow):
         linePosition = -2
 
     return linePosition, lineCount
-    
+
+def processImage(imageHeight, data):
+    sliceStep = 1
+    linePosition = [0] * 50
+    lineWidth = [0] * 50
+    pGain = 0.25
+    for i in range(0, imageHeight//2, sliceStep):
+        newLinePosition, newLineWidth = processRow(data[i])
+        if newLinePosition != -2:
+            index = int(i/sliceStep)
+            linePosition[index] = newLinePosition
+            lineWidth[index] = newLineWidth
+    maxTurnCorrection = 0.25
+    turnCommand = min(pGain * linePosition[35], maxTurnCorrection)
+    turnCommand = max(turnCommand, -maxTurnCorrection)
+    return turnCommand
 
 class RecordingOutput(object):
     """
@@ -79,9 +74,6 @@ class RecordingOutput(object):
         self.frame_cnt = 0
         self.t0 = 0
         self.turnCommand = 0
-        self.pGain = 0.25
-        self.linePosition = [0] * 50
-        self.lineWidth = [0] * 50
 
 
     def write(self, buf):
@@ -111,16 +103,7 @@ class RecordingOutput(object):
             write_luminance_disk(u_data, self.frame_cnt, 'U')
             write_luminance_disk(v_data, self.frame_cnt, 'V')
         self.frame_cnt += 1
-        sliceStep = 1
-        for i in range(0, self.fheight//2, sliceStep):
-            newLinePosition, newLineWidth = processRow(u_data[i])
-            if newLinePosition != -2:
-                index = int(i/sliceStep)
-                self.linePosition[index] = newLinePosition
-                self.lineWidth[index] = newLineWidth
-        maxTurnCorrection = 0.25
-        self.turnCommand = min(self.pGain * self.linePosition[35], maxTurnCorrection)
-        self.turnCommand = max(self.turnCommand, -maxTurnCorrection)
+        self.turnCommand = processImage(self.fheight, u_data)
 
         if FPS_MODE is not FPS_MODE_OFF:
             if FPS_MODE == FPS_MODE_FBF:
@@ -139,4 +122,4 @@ class RecordingOutput(object):
     def flush(self):
         pass  # called at end of recording
 
-    
+
