@@ -88,6 +88,7 @@ def extract_current_pose(log_vars):
 @click.option('--waypoints', default=None, help='waypoint file')
 def run(waypoints=None):
     waypoint_list = None
+    navigating = False
     try:
         with open(waypoints) as fp:
             waypoint_list = json.load(fp)
@@ -157,19 +158,22 @@ def run(waypoints=None):
                             if joystick.presses.dup:
                                 send_button_press_message(link,button=b'u')
                                 logger.info('D pad up pressed')
+                                navigating = True
                             if joystick.presses.ddown:
                                 send_button_press_message(link,button=b'd')
                                 logger.info('D pad down pressed')
                                 navigator.current_waypoint_index = None
                                 navigator.target_waypoint_index = None
+                                navigating = False
                             time.sleep(0.05)
                         # If home was pressed, raise a RobotStopException to bail out of the loop
                         # Home is generally the PS button for playstation controllers, XBox for XBox etc
                         if 'home' in joystick.presses:
                             logger.info('Home button pressed - exiting')
                             raise RobotStopException()
-                        send_motor_speed_message(link=link, left=power_left, right=power_right)
-                        if link.available():
+                        if not navigating:
+                            send_motor_speed_message(link=link, left=power_left, right=power_right)
+                        if link.available() and navigating:
                             # unpack the incoming log message into a tuple
                             message_values = unpack_log_message(link=link)
 
@@ -182,7 +186,6 @@ def run(waypoints=None):
                             if current_pose is not None:
                                 if navigator.should_increment_waypoint(current_pose):
                                     navigator.increment_waypoint_index()
-                            time.sleep(0.02)
                             # send the waypoint message to the teensy
                             send_waypoint_message(link=link, pose=navigator.target_waypoint)
                             print(navigator.target_waypoint)
