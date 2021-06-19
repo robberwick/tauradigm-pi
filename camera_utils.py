@@ -54,7 +54,7 @@ class RecordingOutput(object):
     Object mimicking file-like object so start_recording will write each frame to it.
     See: https://picamera.readthedocs.io/en/release-1.12/api_camera.html#picamera.PiCamera.start_recording
     """
-    def __init__(self, height=50, width=50):
+    def __init__(self, height=50, width=50, read_row_pos_percent=88):
         self.fheight = height
         self.fwidth = width
         self.frame_cnt = 0
@@ -64,6 +64,7 @@ class RecordingOutput(object):
         self.yuv_data = dict(y=None, u=None, v=None)
         self.line_position_at_row = [0] * self.fheight
         self.line_width_at_row = [0] * self.fheight
+        self.read_row_pos_percent = read_row_pos_percent
 
     def get_channel_height(self, channel='u'):
         return self.fheight if channel.lower() == 'y' else self.fheight // 2
@@ -137,7 +138,7 @@ class RecordingOutput(object):
         """Calculate the turn command from the currently calculated line positions"""
         max_turn_correction = 0.25
         # why are we calculating the line positions of all the rows, if we're only looking at the value for row 35?
-        read_row = self.get_channel_height(channel=channel) // 8
+        read_row = (self.get_channel_height(channel=channel) // 100) * self.read_row_pos_percent
         turn_command = min(self.p_gain * self.line_position_at_row[read_row], max_turn_correction)
         turn_command = max(turn_command, -max_turn_correction)
         return turn_command
