@@ -18,39 +18,44 @@ def write_luminance_disk(data, frame, channel):
     im = Image.fromarray(data, mode='L')  # if using luminance mode
     im.save(filename)
 
-def processRow(receivedRow):
-    rowCopy = receivedRow.copy() 
-    row = memoryview(rowCopy)
+def process_row(received_row):
+    """Returns a tuple of (line position (center) and line width for the given row data"""
+    rowCopy = received_row.copy()
+    row = memoryview(rowCopy) #[y*w:(y+1)*w]
 
-    lineCounts = []
-    linePositions = []
+    line_counts = []
+    line_positions = []
     threshold = 125
-    in = False
+    inside_line = False
     start = 0
     for val in row:
         if val > threshold:
             #not line
-            if in:
-                lineCounts.append(row - start)
-                linePositions.append((start + row)/2)
-                in = False
+            if inside_line:
+                line_counts.append(row - start)
+                line_positions.append((start + row)/2)
+                inside_line = False
         else:
             #line
-            if !in:
+            if not inside_line:
                 start = row
-                in = True
-    if in and row-start >= 2:
-        lineCounts.append(row-start)
-        linePositions.append((start + row)/2)
+                inside_line = True
+    if inside_line and row-start >= 2:
+        line_counts.append(row-start)
+        line_positions.append((start + row)/2)
 
+
+    # I don't know what this chunk does.. I don't think we need it
+    # but if we don't we also need to make sure that where we were checking for a line_position of  None we're actually checking for a zero length array
     maxLineWidth = 1000
-    if lineCounts[0] < maxLineWidth and lineCounts[0] >0:
-        linePositions[0] = 2 * weightedAverage / len(row) / lineCounts[0]
-        linePositions[0] -= 1
+    if line_counts[0] < maxLineWidth and line_counts[0] >0:
+        # TODO what does weighted average mean here? Do we need it?
+        line_positions[0] = 2 * weightedAverage / len(row) / line_counts[0]
+        line_positions[0] -= 1
     else:
-        linePositions[0] = -2
+        line_positions[0] = None
 
-    return linePositions, lineCounts
+    return line_positions, line_counts
 
 
 class RecordingOutput(object):
@@ -58,58 +63,56 @@ class RecordingOutput(object):
     Object mimicking file-like object so start_recording will write each frame to it.
     See: https://picamera.readthedocs.io/en/release-1.12/api_camera.html#picamera.PiCamera.start_recording
     """
-    def __init__(self):
-        self.fwidth = 0
-        self.fheight = 0
+    def __init__(self, height=50, width=50, read_row_pos_percent=88):
+        self.fheight = height
+        self.fwidth = width
         self.frame_cnt = 0
         self.t0 = 0
-        self.turnCommand = 0
-        self.pGain = 0.25
-        self.linePosition = [0] * 50
-        self.lineWidth = [0] * 50
 
+        self.p_gain = 0.25
+        self.yuv_data = dict(y=None, u=None, v=None)
+        self.line_position_at_row = [0] * self.fheight
+        self.line_width_at_row = [0] * self.fheight
+        self.read_row_pos_percent = read_row_pos_percent
+
+    def get_channel_height(self, channel='u'):
+        return self.fheight if channel.lower() == 'y' else self.fheight // 2
 
     def write(self, buf):
         global t_prev
         # write will be called once for each frame of output. buf is a bytes
         # object containing the frame data in YUV420 format; we can construct a
         # numpy array on top of the Y plane of this data quite easily:
-        y_data = np.frombuffer(buf,
+        self.yuv_data['y'] = np.frombuffer(buf,
             dtype=np.uint8,
             count=self.fwidth * self.fheight
         ).reshape((self.fheight, self.fwidth))
         u_offset = self.fwidth * self.fheight
-        u_data = np.frombuffer(buf,
+        self.yuv_data['u']  = np.frombuffer(buf,
             dtype=np.uint8,
             count=self.fwidth//2 * self.fheight//2,
             offset=u_offset
         ).reshape((self.fheight//2, self.fwidth//2))
         v_offset = self.fwidth * self.fheight + self.fwidth//2 * self.fheight//2
-        v_data = np.frombuffer(buf,
+        self.yuv_data['v'] = np.frombuffer(buf,
             dtype=np.uint8,
             count=self.fwidth//2 * self.fheight//2,
             offset=int(v_offset)
         ).reshape((self.fheight//2, self.fwidth//2))
         # actual processing
         if WRITE_IMAGES and self.frame_cnt % 20 == 0:
-            write_luminance_disk(y_data, self.frame_cnt, 'Y')
-            write_luminance_disk(u_data, self.frame_cnt, 'U')
-            write_luminance_disk(v_data, self.frame_cnt, 'V')
+            write_luminance_disk(self.yuv_data['y'], self.frame_cnt, 'Y')
+            write_luminance_disk(self.yuv_data['u'], self.frame_cnt, 'U')
+         #   write_luminance_disk(self.yuv_data['v'], self.frame_cnt, 'V')
         self.frame_cnt += 1
-        sliceStep = 1
-        for i in range(0, self.fheight//2, sliceStep):
-            newLinePosition, newLineWidth = processRow(u_data[i])
-            if newLinePosition[0] != -2:
-                index = int(i/sliceStep)
-                self.linePosition[index] = newLinePosition[0]
-                self.lineWidth[index] = newLineWidth[0]
-        maxTurnCorrection = 0.25
-        self.turnCommand = min(self.pGain * self.linePosition[35], maxTurnCorrection)
-        self.turnCommand = max(self.turnCommand, -maxTurnCorrection)
+
+        # Extract line data
+        self.extract_line_positions()
 
         if FPS_MODE is not FPS_MODE_OFF:
             if FPS_MODE == FPS_MODE_FBF:
                 # frame by frame difference
+                # HOW DOES THIS WORK?
                 dt = time.time() - t_prev  # dt
                 t_prev = time.time()
                 fps = 1.0 / dt
@@ -124,4 +127,27 @@ class RecordingOutput(object):
     def flush(self):
         pass  # called at end of recording
 
-    
+    def extract_line_positions(self, channel='u'):
+        """Extract the line positions from the current image data using the specified channel"""
+        slice_step = 1
+
+        # select data from channel
+        data = self.yuv_data[channel]
+
+        # TODO Only extract specified rows?
+        for i in range(0, self.fheight // 2, slice_step):
+            new_line_position, new_line_width = process_row(data[i])
+            if new_line_position is not None:
+                index = int(i/slice_step)
+                self.line_position_at_row[index] = new_line_position
+                self.line_width_at_row[index] = new_line_width
+
+
+    def get_turn_command(self, channel='u'):
+        """Calculate the turn command from the currently calculated line positions"""
+        max_turn_correction = 0.25
+        # why are we calculating the line positions of all the rows, if we're only looking at the value for row 35?
+        read_row = int((self.get_channel_height(channel=channel) / 100) * self.read_row_pos_percent)
+        turn_command = min(self.p_gain * self.line_position_at_row[read_row], max_turn_correction)
+        turn_command = max(turn_command, -max_turn_correction)
+        return turn_command

@@ -27,18 +27,18 @@ log_data = None
 RECORD_TIME = 5  # number of seconds to record
 
 # FRAME_RATE = 90
-FRAME_RATE = 120
+FRAME_RATE = 90
 # FRAME_RATE = 200
 
 # SENSOR_MODE = 4  # 1640x1232, full FoV, binning 2x2
 # RESOLUTION = (1640, 1232)
 # RESOLUTION = (820, 616)
 
-# SENSOR_MODE = 6  # 1280x720, partial FoV, binning 2x2
-# RESOLUTION = (1280, 720)
+SENSOR_MODE = 6  # 1280x720, partial FoV, binning 2x2
+RESOLUTION = (1280, 720)
 
-SENSOR_MODE = 7  # 640x480, partial FoV, binning 2x2
-RESOLUTION = (640, 480)
+#SENSOR_MODE = 7  # 640x480, partial FoV, binning 2x2
+#RESOLUTION = (640, 480)
 
 
 # Calculate the actual image size in the stream (accounting for rounding
@@ -87,7 +87,7 @@ def send_button_press_message(link=None, button=' '):
     link.send(len(payload))
 
 def receive_sensor_data(link=None):
-    fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3
+    fmt = 'f' * 3 + 'f' * 3
 
     response = array.array('B', link.rxBuff[:link.bytesRead]).tobytes()
 
@@ -96,7 +96,7 @@ def receive_sensor_data(link=None):
 def run():
     auto = False
     try:
-        link = txfer.SerialTransfer('/dev/serial0', baud=1000000, restrict_ports=False)
+        link = txfer.SerialTransfer('/dev/serial0', baud=500000, restrict_ports=False)
         battery_checked = False
         with picamera.PiCamera(
                     sensor_mode=SENSOR_MODE,
@@ -108,10 +108,8 @@ def run():
             time.sleep(2)  # let the camera warm up and set gain/white balance
 
             print('starting recording')
-            output = RecordingOutput()
+            output = RecordingOutput(height=48, width=96)
             reductionFactor = 6.666
-            output.fwidth = 96 #int(fwidth/reductionFactor)
-            output.fheight = 80 #int(fheight/reductionFactor)
             output.t0 = time.time()  # seconds
             t_prev = output.t0
 
@@ -184,13 +182,13 @@ def run():
                                 logger.info('Home button pressed - exiting')
                                 raise RobotStopException()
                             if auto:
-                                power_left, power_right = mixer(yaw=output.turnCommand, throttle=-lineFollowingSpeed)
+                                power_left, power_right = mixer(yaw=output.get_turn_command(), throttle=-lineFollowingSpeed)
                                 print("     ", end='\r', flush=True)
-                                message = f'line: {output.turnCommand:.2f}, power = {power_left}, {power_right}'
+                                message = f'line: {output.get_turn_command():.2f}, power = {power_left}, {power_right}'
                                 print(message, end='\r', flush=True)
                             send_motor_speed_message(link=link, left=power_left, right=power_right)
                             if link.available():
-                                log_data = (time.time(), output.linePosition, output.lineWidth,)+ receive_sensor_data(link=link) 
+                                log_data = (time.time(), output.line_position_at_row, output.line_width_at_row,)+ receive_sensor_data(link=link)
                                 logger.log('DATA', ','.join(map(str,log_data)))
                             else:
                                 link_msg = 'no data - link status: {}'.format(link.status)
