@@ -184,13 +184,13 @@ def run():
                                 logger.info('Home button pressed - exiting')
                                 raise RobotStopException()
                             if auto:
-                                power_left, power_right = mixer(yaw=output.turnCommand, throttle=-lineFollowingSpeed)
+                                power_left, power_right = mixer(yaw=output.get_turn_command(), throttle=-lineFollowingSpeed)
                                 print("     ", end='\r', flush=True)
-                                message = f'line: {output.turnCommand:.2f}, power = {power_left}, {power_right}'
+                                message = f'line: {output.get_turn_command():.2f}, power = {power_left}, {power_right}'
                                 print(message, end='\r', flush=True)
                             send_motor_speed_message(link=link, left=power_left, right=power_right)
                             if link.available():
-                                log_data = (time.time(), output.linePosition, output.lineWidth,)+ receive_sensor_data(link=link) 
+                                log_data = (time.time(), output.line_position_at_row, output.line_width_at_row,)+ receive_sensor_data(link=link)
                                 logger.log('DATA', ','.join(map(str,log_data)))
                             else:
                                 link_msg = 'no data - link status: {}'.format(link.status)
