@@ -54,17 +54,20 @@ class RecordingOutput(object):
     Object mimicking file-like object so start_recording will write each frame to it.
     See: https://picamera.readthedocs.io/en/release-1.12/api_camera.html#picamera.PiCamera.start_recording
     """
-    def __init__(self):
-        self.fwidth = 0
-        self.fheight = 0
+    def __init__(self, height=50, width=50, read_row_pos_percent=88):
+        self.fheight = height
+        self.fwidth = width
         self.frame_cnt = 0
         self.t0 = 0
 
         self.p_gain = 0.25
         self.yuv_data = dict(y=None, u=None, v=None)
-        # TODO this 50 should probably be a constructor param
-        self.line_position_at_row = [0] * 50
-        self.line_width_at_row = [0] * 50
+        self.line_position_at_row = [0] * self.fheight
+        self.line_width_at_row = [0] * self.fheight
+        self.read_row_pos_percent = read_row_pos_percent
+
+    def get_channel_height(self, channel='u'):
+        return self.fheight if channel.lower() == 'y' else self.fheight // 2
 
     def write(self, buf):
         global t_prev
@@ -91,7 +94,7 @@ class RecordingOutput(object):
         if WRITE_IMAGES and self.frame_cnt % 20 == 0:
             write_luminance_disk(self.yuv_data['y'], self.frame_cnt, 'Y')
             write_luminance_disk(self.yuv_data['u'], self.frame_cnt, 'U')
-            write_luminance_disk(self.yuv_data['v'], self.frame_cnt, 'V')
+         #   write_luminance_disk(self.yuv_data['v'], self.frame_cnt, 'V')
         self.frame_cnt += 1
 
         # Extract line data
@@ -125,7 +128,6 @@ class RecordingOutput(object):
         # TODO Only extract specified rows?
         for i in range(0, self.fheight // 2, slice_step):
             new_line_position, new_line_width = process_row(data[i])
-            # is -2 just a magic number to indicate 'something went wrong' or 'nothing was found'?
             if new_line_position is not None:
                 index = int(i/slice_step)
                 self.line_position_at_row[index] = new_line_position
@@ -136,6 +138,7 @@ class RecordingOutput(object):
         """Calculate the turn command from the currently calculated line positions"""
         max_turn_correction = 0.25
         # why are we calculating the line positions of all the rows, if we're only looking at the value for row 35?
-        turn_command = min(self.p_gain * self.line_position_at_row[35], max_turn_correction)
+        read_row = int((self.get_channel_height(channel=channel) / 100) * self.read_row_pos_percent)
+        turn_command = min(self.p_gain * self.line_position_at_row[read_row], max_turn_correction)
         turn_command = max(turn_command, -max_turn_correction)
         return turn_command
