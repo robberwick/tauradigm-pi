@@ -89,6 +89,7 @@ def extract_current_pose(log_vars):
 def run(waypoints=None):
     waypoint_list = None
     navigating = False
+    driving = True
     try:
         with open(waypoints) as fp:
             waypoint_list = json.load(fp)
@@ -141,14 +142,16 @@ def run(waypoints=None):
                                 send_button_press_message(link,button=b'c')
                                 logger.info('circle button pressed')
                             if joystick.presses.triangle:
-                                send_button_press_message(link,button=b't')
+                             #   send_button_press_message(link,button=b't')
                                 logger.info('triangle button pressed')
+                                driving = True
                             if joystick.presses.square:
                                 send_button_press_message(link,button=b's')
                                 logger.info('square button pressed')
                             if joystick.presses.cross:
-                                send_button_press_message(link,button=b'x')
+                              #  send_button_press_message(link,button=b'x')
                                 logger.info('cross button pressed')
+                                driving = False
                             if joystick.presses.dleft:
                                 send_button_press_message(link,button=b'l')
                                 logger.info('D pad left pressed')
@@ -163,7 +166,7 @@ def run(waypoints=None):
                                 send_button_press_message(link,button=b'd')
                                 logger.info('D pad down pressed')
                                 navigator.current_waypoint_index = None
-                                navigator.target_waypoint_index = None
+                                navigator.target_waypoint_index = 0
                                 navigating = False
                             time.sleep(0.05)
                         # If home was pressed, raise a RobotStopException to bail out of the loop
@@ -171,6 +174,8 @@ def run(waypoints=None):
                         if 'home' in joystick.presses:
                             logger.info('Home button pressed - exiting')
                             raise RobotStopException()
+                        if not driving:
+                            power_left, power_right = 0, 0
                         if not navigating:
                             send_motor_speed_message(link=link, left=power_left, right=power_right)
                         if link.available() and navigating:
