@@ -56,12 +56,11 @@ class RecordingOutput(object):
     Object mimicking file-like object so start_recording will write each frame to it.
     See: https://picamera.readthedocs.io/en/release-1.12/api_camera.html#picamera.PiCamera.start_recording
     """
-    def __init__(self, height=50, width=50, read_row_pos_percent=88):
+    def __init__(self, height=50, width=50, read_row_pos_percent=92):
         self.fheight = height
         self.fwidth = width
         self.frame_cnt = 0
         self.t0 = 0
-        self.lines = 0
         self.p_gain = 0.25
         self.yuv_data = dict(y=None, u=None, v=None)
         self.line_position_at_row = [0] * self.fheight
@@ -137,16 +136,20 @@ class RecordingOutput(object):
             # but get_turn_command should do the right thing when it fails to pick up a line at the expected position?
             if new_line_position:
                 index = int(i/slice_step)
-                self.lines = len(new_line_position)
-                self.line_position_at_row[index] = new_line_position[0]
-                self.line_width_at_row[index] = new_line_width[0]
+                self.line_position_at_row[index] = new_line_position
+                self.line_width_at_row[index] = new_line_width
 
 
-    def get_turn_command(self, channel='u'):
-        """Calculate the turn command from the currently calculated line positions"""
+    def get_turn_command(self, channel='u', left_fork=True):
+        """Calculate the turn command from the currently calculated line positions and a L or R fork option"""
         max_turn_correction = 0.25
         # why are we calculating the line positions of all the rows, if we're only looking at the value for row 35?
         read_row = int((self.get_channel_height(channel=channel) / 100) * self.read_row_pos_percent)
-        turn_command = min(self.p_gain * self.line_position_at_row[read_row], max_turn_correction)
+        lines = len(self.line_position_at_row[read_row])
+        if left_fork:
+            line_position = self.line_position_at_row[read_row][0]
+        else:
+            line_position = self.line_position_at_row[read_row][lines-1]
+        turn_command = min(self.p_gain * line_position, max_turn_correction)
         turn_command = max(turn_command, -max_turn_correction)
         return turn_command

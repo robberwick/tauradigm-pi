@@ -95,6 +95,7 @@ def receive_sensor_data(link=None):
 
 def run():
     auto = False
+    left_fork = False
     try:
         link = txfer.SerialTransfer('/dev/serial0', baud=500000, restrict_ports=False)
         battery_checked = False
@@ -112,7 +113,6 @@ def run():
             reductionFactor = 6.666
             output.t0 = time.time()  # seconds
             t_prev = output.t0
-
             camera.start_recording(output, 'yuv', resize=(output.fwidth, output.fheight))
 
             while True:
@@ -166,9 +166,11 @@ def run():
                                 if joystick.presses.dleft:
                                     send_button_press_message(link,button=b'l')
                                     logger.info('D pad left pressed')
+                                    left_fork = True
                                 if joystick.presses.dright:
                                     send_button_press_message(link,button=b'r')
                                     logger.info('D pad right pressed')
+                                    left_fork = False
                                 if joystick.presses.dup:
                                     send_button_press_message(link,button=b'u')
                                     logger.info('D pad up pressed')
@@ -182,11 +184,7 @@ def run():
                                 logger.info('Home button pressed - exiting')
                                 raise RobotStopException()
                             if auto:
-                                power_left, power_right = mixer(yaw=output.get_turn_command(), throttle=-lineFollowingSpeed)
-                                if output.lines > 1:
-                                    power_left = power_left/2
-                                    power_right = power_right/2
-                                    print(output.lines)
+                                power_left, power_right = mixer(yaw=output.get_turn_command(left_fork=left_fork), throttle=-lineFollowingSpeed)
                                 print("     ", end='\r', flush=True)
                                 message = f'line: {output.get_turn_command():.2f}, power = {power_left}, {power_right}'
                                 print(message, end='\r', flush=True)
