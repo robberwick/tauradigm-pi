@@ -87,7 +87,7 @@ def send_button_press_message(link=None, button=' '):
     link.send(len(payload))
 
 def receive_sensor_data(link=None):
-    fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3
+    fmt = 'f' * 3 + 'f' * 3
 
     response = array.array('B', link.rxBuff[:link.bytesRead]).tobytes()
 
@@ -96,7 +96,7 @@ def receive_sensor_data(link=None):
 def run():
     auto = False
     try:
-        link = txfer.SerialTransfer('/dev/serial0', baud=1000000, restrict_ports=False)
+        link = txfer.SerialTransfer('/dev/serial0', baud=500000, restrict_ports=False)
         battery_checked = False
         with picamera.PiCamera(
                     sensor_mode=SENSOR_MODE,
