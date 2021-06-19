@@ -61,7 +61,7 @@ class RecordingOutput(object):
         self.fwidth = width
         self.frame_cnt = 0
         self.t0 = 0
-
+        self.lines = 0
         self.p_gain = 0.25
         self.yuv_data = dict(y=None, u=None, v=None)
         self.line_position_at_row = [0] * self.fheight
@@ -137,6 +137,7 @@ class RecordingOutput(object):
             # but get_turn_command should do the right thing when it fails to pick up a line at the expected position?
             if new_line_position:
                 index = int(i/slice_step)
+                self.lines = len(new_line_position)
                 self.line_position_at_row[index] = new_line_position[0]
                 self.line_width_at_row[index] = new_line_width[0]
 

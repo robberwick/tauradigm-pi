@@ -183,6 +183,10 @@ def run():
                                 raise RobotStopException()
                             if auto:
                                 power_left, power_right = mixer(yaw=output.get_turn_command(), throttle=-lineFollowingSpeed)
+                                if output.lines > 1:
+                                    power_left = power_left/2
+                                    power_right = power_right/2
+                                    print(output.lines)
                                 print("     ", end='\r', flush=True)
                                 message = f'line: {output.get_turn_command():.2f}, power = {power_left}, {power_right}'
                                 print(message, end='\r', flush=True)
