@@ -22,27 +22,31 @@ def process_row(received_row):
     """Returns a tuple of (line position (center) and line width for the given row data"""
     rowCopy = received_row.copy()
     row = memoryview(rowCopy) #[y*w:(y+1)*w]
-
+    image_width = len(row)
     line_counts = []
     line_positions = []
     threshold = 125
     inside_line = False
     start = 0
+    x = 0
     for val in row:
         if val > threshold:
             #not line
             if inside_line:
-                line_counts.append(row - start)
-                line_positions.append((start + row)/2)
+                line_width = x - start
+                line_counts.append(line_width)
+                line_position = (x + start)/image_width - 1
+                line_positions.append(line_position)
                 inside_line = False
         else:
             #line
             if not inside_line:
-                start = row
+                start = x
                 inside_line = True
-    if inside_line and row-start >= 2:
-        line_counts.append(row-start)
-        line_positions.append((start + row)/2)
+        x = x + 1
+    if inside_line and (x - start) >= 2:
+        line_counts.append(x - start)
+        line_positions.append((x + start)/image_width - 1)
 
     return line_positions, line_counts
 
@@ -66,6 +70,9 @@ class RecordingOutput(object):
 
     def get_channel_height(self, channel='u'):
         return self.fheight if channel.lower() == 'y' else self.fheight // 2
+
+    def get_channel_width(self, channel='u'):
+        return self.fwidth if channel.lower() == 'y' else self.fwidth // 2
 
     def write(self, buf):
         global t_prev
@@ -130,8 +137,8 @@ class RecordingOutput(object):
             # but get_turn_command should do the right thing when it fails to pick up a line at the expected position?
             if new_line_position:
                 index = int(i/slice_step)
-                self.line_position_at_row[index] = new_line_position
-                self.line_width_at_row[index] = new_line_width
+                self.line_position_at_row[index] = new_line_position[0]
+                self.line_width_at_row[index] = new_line_width[0]
 
 
     def get_turn_command(self, channel='u'):
