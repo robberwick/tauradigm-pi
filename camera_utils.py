@@ -44,17 +44,6 @@ def process_row(received_row):
         line_counts.append(row-start)
         line_positions.append((start + row)/2)
 
-
-    # I don't know what this chunk does.. I don't think we need it
-    # but if we don't we also need to make sure that where we were checking for a line_position of  None we're actually checking for a zero length array
-    maxLineWidth = 1000
-    if line_counts[0] < maxLineWidth and line_counts[0] >0:
-        # TODO what does weighted average mean here? Do we need it?
-        line_positions[0] = 2 * weightedAverage / len(row) / line_counts[0]
-        line_positions[0] -= 1
-    else:
-        line_positions[0] = None
-
     return line_positions, line_counts
 
 
