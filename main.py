@@ -108,12 +108,8 @@ def run():
             time.sleep(2)  # let the camera warm up and set gain/white balance
 
             print('starting recording')
-            output = RecordingOutput()
+            output = RecordingOutput(height=48, width=96)
             reductionFactor = 6.666
-#            print(int(fwidth/reductionFactor))
- #           print(int(fheight/reductionFactor))
-            output.fwidth = 96 #192 #96 #int(fwidth/reductionFactor)
-            output.fheight = 48 #112 #80 #int(fheight/reductionFactor)
             output.t0 = time.time()  # seconds
             t_prev = output.t0
 

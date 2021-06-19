@@ -54,9 +54,9 @@ class RecordingOutput(object):
     Object mimicking file-like object so start_recording will write each frame to it.
     See: https://picamera.readthedocs.io/en/release-1.12/api_camera.html#picamera.PiCamera.start_recording
     """
-    def __init__(self):
-        self.fwidth = 0
-        self.fheight = 0
+    def __init__(self, height=50, width=50):
+        self.fheight = height
+        self.fwidth = width
         self.frame_cnt = 0
         self.t0 = 0
 
