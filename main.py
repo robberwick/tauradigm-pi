@@ -95,6 +95,7 @@ def receive_sensor_data(link=None):
 
 def run():
     auto = False
+    driving = False
     left_fork = False
     try:
         link = txfer.SerialTransfer('/dev/serial0', baud=500000, restrict_ports=False)
@@ -141,7 +142,6 @@ def run():
 
                             # Get virtual right axis joystick values from the right analogue stick
                             virt_x_axis, virt_y_axis = joystick['r']
-                            power_left, power_right = mixer(yaw=virt_x_axis, throttle=virt_y_axis)
                             # Get a ButtonPresses object containing everything that was pressed since the last
                             # time around this loop.
                             joystick.check_presses()
@@ -155,14 +155,14 @@ def run():
                                 if joystick.presses.triangle:
                                     #send_button_press_message(link,button=b't')
                                     logger.info('triangle button pressed')
-                                    auto = True
+                                    driving = True
                                 if joystick.presses.square:
                                     send_button_press_message(link,button=b's')
                                     logger.info('square button pressed')
                                 if joystick.presses.cross:
                                     #send_button_press_message(link,button=b'x')
                                     logger.info('cross button pressed')
-                                    auto = False
+                                    driving = False
                                 if joystick.presses.dleft:
                                     send_button_press_message(link,button=b'l')
                                     logger.info('D pad left pressed')
@@ -172,17 +172,21 @@ def run():
                                     logger.info('D pad right pressed')
                                     left_fork = False
                                 if joystick.presses.dup:
-                                    send_button_press_message(link,button=b'u')
                                     logger.info('D pad up pressed')
+                                    auto = True
                                 if joystick.presses.ddown:
-                                    send_button_press_message(link,button=b'd')
                                     logger.info('D pad down pressed')
+                                    auto = False
                                 time.sleep(0.06)
                             # If home was pressed, raise a RobotStopException to bail out of the loop
                             # Home is generally the PS button for playstation controllers, XBox for XBox etc
                             if 'home' in joystick.presses:
                                 logger.info('Home button pressed - exiting')
                                 raise RobotStopException()
+                            if driving:
+                                power_left, power_right = mixer(yaw=virt_x_axis, throttle=virt_y_axis)
+                            else:
+                                power_left, power_right = 0, 0
                             if auto:
                                 power_left, power_right = mixer(yaw=output.get_turn_command(left_fork=left_fork), throttle=-lineFollowingSpeed)
                                 print("     ", end='\r', flush=True)
