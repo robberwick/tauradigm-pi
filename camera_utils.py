@@ -44,7 +44,8 @@ def process_row(received_row):
         line_position = 2 * weighted_average / len(row) / line_count
         line_position -= 1
     else:
-        line_position = -2
+        # No line line found - return None
+        line_position = None
 
     return line_position, line_count
 
@@ -125,7 +126,7 @@ class RecordingOutput(object):
         for i in range(0, self.fheight // 2, slice_step):
             new_line_position, new_line_width = process_row(data[i])
             # is -2 just a magic number to indicate 'something went wrong' or 'nothing was found'?
-            if new_line_position != -2:
+            if new_line_position is not None:
                 index = int(i/slice_step)
                 self.line_position_at_row[index] = new_line_position
                 self.line_width_at_row[index] = new_line_width
