@@ -26,6 +26,7 @@ def process_row(received_row):
     line_counts = []
     line_positions = []
     threshold = 125
+    min_width = 2
     inside_line = False
     start = 0
     x = 0
@@ -34,9 +35,10 @@ def process_row(received_row):
             #not line
             if inside_line:
                 line_width = x - start
-                line_counts.append(line_width)
-                line_position = (x + start)/image_width - 1
-                line_positions.append(line_position)
+                if line_width > min_width:
+                    line_counts.append(line_width)
+                    line_position = (x + start)/image_width - 1
+                    line_positions.append(line_position)
                 inside_line = False
         else:
             #line
