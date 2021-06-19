@@ -138,7 +138,7 @@ class RecordingOutput(object):
         """Calculate the turn command from the currently calculated line positions"""
         max_turn_correction = 0.25
         # why are we calculating the line positions of all the rows, if we're only looking at the value for row 35?
-        read_row = (self.get_channel_height(channel=channel) // 100) * self.read_row_pos_percent
+        read_row = (self.get_channel_height(channel=channel) / 100) * self.read_row_pos_percent
         turn_command = min(self.p_gain * self.line_position_at_row[read_row], max_turn_correction)
         turn_command = max(turn_command, -max_turn_correction)
         return turn_command
