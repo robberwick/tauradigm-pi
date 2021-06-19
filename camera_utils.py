@@ -137,7 +137,9 @@ class RecordingOutput(object):
         # TODO Only extract specified rows?
         for i in range(0, self.fheight // 2, slice_step):
             new_line_position, new_line_width = process_row(data[i])
-            if new_line_position is not None:
+            # perhaps we shouldn't be skipping empty lists here
+            # but get_turn_command should do the right thing when it fails to pick up a line at the expected position?
+            if new_line_position:
                 index = int(i/slice_step)
                 self.line_position_at_row[index] = new_line_position
                 self.line_width_at_row[index] = new_line_width
