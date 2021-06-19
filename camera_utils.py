@@ -94,7 +94,7 @@ class RecordingOutput(object):
         if WRITE_IMAGES and self.frame_cnt % 20 == 0:
             write_luminance_disk(self.yuv_data['y'], self.frame_cnt, 'Y')
             write_luminance_disk(self.yuv_data['u'], self.frame_cnt, 'U')
-            write_luminance_disk(self.yuv_data['v'], self.frame_cnt, 'V')
+         #   write_luminance_disk(self.yuv_data['v'], self.frame_cnt, 'V')
         self.frame_cnt += 1
 
         # Extract line data
