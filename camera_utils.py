@@ -58,7 +58,7 @@ class RecordingOutput(object):
     Object mimicking file-like object so start_recording will write each frame to it.
     See: https://picamera.readthedocs.io/en/release-1.12/api_camera.html#picamera.PiCamera.start_recording
     """
-    def __init__(self, height=50, width=50, read_row_pos_percent=92):
+    def __init__(self, height=50, width=50, read_row_pos_percent=80):
         self.fheight = height
         self.fwidth = width
         self.frame_cnt = 0
@@ -68,6 +68,8 @@ class RecordingOutput(object):
         self.line_position_at_row = [0] * self.fheight
         self.line_width_at_row = [0] * self.fheight
         self.read_row_pos_percent = read_row_pos_percent
+        self.last_fork_time = 0
+        self.fork_timeout = 0.5
 
     def get_channel_height(self, channel='u'):
         return self.fheight if channel.lower() == 'y' else self.fheight // 2
@@ -144,10 +146,18 @@ class RecordingOutput(object):
 
     def get_turn_command(self, channel='u', left_fork=True):
         """Calculate the turn command from the currently calculated line positions and a L or R fork option"""
-        max_turn_correction = 0.25
+        max_turn_correction = 0.5
+        turn_at_fork = 1
         # why are we calculating the line positions of all the rows, if we're only looking at the value for row 35?
         read_row = int((self.get_channel_height(channel=channel) / 100) * self.read_row_pos_percent)
         lines = len(self.line_position_at_row[read_row])
+        if lines > 1 and (self.last_fork_time + self.fork_timeout < time.time()):
+            #new junction detected
+            self.last_fork_time = time.time()
+            if left_fork:
+                return -turn_at_fork
+            else:
+                return turn_at_fork
         if left_fork:
             line_position = self.line_position_at_row[read_row][0]
         else:
