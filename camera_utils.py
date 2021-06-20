@@ -17,7 +17,7 @@ def write_luminance_disk(data, frame, channel, line_positions=None, line_widths=
     filename = f'images/frame-{frame}-{timestamp}-{channel}.bmp'
     im = Image.fromarray(data, mode='L')  # if using luminance mode
 
-    scaling_factor = 1 if channel.lower() is not 'y' else 2
+    scaling_factor = 1 if channel.lower() != 'y' else 2
 
     # if we have line positions, plot them
     if line_positions:
