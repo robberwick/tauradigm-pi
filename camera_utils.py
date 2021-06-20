@@ -44,8 +44,8 @@ def write_luminance_disk(data, frame, channel, line_positions=None, line_widths=
                 #     except KeyError:
                 #         pass
 
-                # draw the center point of the line in green (red if it's the read_row)
-                center_dot_colour = (255, 0, 0) if row_num == read_row else (0, 255, 0)
+                # draw the center point of the line in white (black if it's the read_row)
+                center_dot_colour = 255 if row_num == read_row else 0
                 im.putpixel((line_pos * scaling_factor, row_num * scaling_factor), center_dot_colour)
 
     im.save(filename)
