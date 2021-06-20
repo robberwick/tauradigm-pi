@@ -84,7 +84,7 @@ def process_row(received_row):
 
     line_width_px = x - start
     if inside_line and (line_width_px >= 2):
-        line_widths.append(line_width)
+        line_widths.append(line_width_px)
         line_positions.append((x + start)/image_width - 1)
         line_centers.append(line_width // 2)
 
