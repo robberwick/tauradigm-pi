@@ -45,12 +45,13 @@ def write_luminance_disk(data, frame, channel, line_positions=None, line_widths=
     im.save(filename)
 
 def process_row(received_row):
-    """Returns a tuple of (line position (center) and line width for the given row data"""
+    """Returns a tuple of (line position (distance from center of row -1 to 1), line widths, and center position in pixels of each line found for the given row data"""
     rowCopy = received_row.copy()
     row = memoryview(rowCopy) #[y*w:(y+1)*w]
     image_width = len(row)
-    line_counts = []
+    line_widths = []
     line_positions = []
+    line_centers = []
     threshold = 125
     min_width = 2
     inside_line = False
@@ -62,9 +63,11 @@ def process_row(received_row):
             if inside_line:
                 line_width = x - start
                 if line_width > min_width:
-                    line_counts.append(line_width)
+                    # it's a legit line - save it
+                    line_widths.append(line_width)
                     line_position = (x + start)/image_width - 1
                     line_positions.append(line_position)
+                    line_centers.append(line_width // 2)
                 inside_line = False
         else:
             #line
@@ -72,11 +75,14 @@ def process_row(received_row):
                 start = x
                 inside_line = True
         x = x + 1
-    if inside_line and (x - start) >= 2:
-        line_counts.append(x - start)
-        line_positions.append((x + start)/image_width - 1)
 
-    return line_positions, line_counts
+    line_width_px = x - start
+    if inside_line and (line_width_px >= 2):
+        line_widths.append(line_width)
+        line_positions.append((x + start)/image_width - 1)
+        line_centers.append((line_width) // 2)
+
+    return line_positions, line_widths, line_centers
 
 
 class RecordingOutput(object):
@@ -93,6 +99,7 @@ class RecordingOutput(object):
         self.yuv_data = dict(y=None, u=None, v=None)
         self.line_position_at_row = [[]] * self.fheight
         self.line_width_at_row = [[]] * self.fheight
+        self.line_centers_at_row = [[]] * self.fheight
         self.read_row_pos_percent = read_row_pos_percent
         self.last_fork_time = 0
         self.fork_timeout = 0.5
@@ -138,7 +145,7 @@ class RecordingOutput(object):
                     self.yuv_data[channel],
                     self.frame_cnt,
                     channel.upper(),
-                    line_positions=self.line_position_at_row,
+                    line_positions=self.line_centers_at_row,
                     line_widths=self.line_width_at_row,
                     read_row=self.get_read_row(channel)
                     )
@@ -174,13 +181,14 @@ class RecordingOutput(object):
 
         # TODO Only extract specified rows?
         for i in range(0, self.fheight // 2, slice_step):
-            new_line_position, new_line_width = process_row(data[i])
+            line_positions, line_widths, line_centers = process_row(data[i])
             # perhaps we shouldn't be skipping empty lists here
             # but get_turn_command should do the right thing when it fails to pick up a line at the expected position?
-            if new_line_position:
+            if line_positions:
                 index = int(i/slice_step)
-                self.line_position_at_row[index] = new_line_position
-                self.line_width_at_row[index] = new_line_width
+                self.line_position_at_row[index] = line_positions
+                self.line_width_at_row[index] = line_widths
+                self.line_centers_at_row[index] = line_centers
 
 
     def get_turn_command(self, channel='u', left_fork=True):
