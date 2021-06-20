@@ -1,4 +1,5 @@
 from approxeng.input.selectbinder import ControllerResource
+from signal_capture import AudioCapture
 import array
 import random
 import struct
@@ -94,6 +95,11 @@ def receive_sensor_data(link=None):
     return struct.unpack(fmt, response)
 
 def run():
+
+    capture = AudioCapture()
+    print("note key: ", capture.sequence.signal_key)
+    turn_sequence = capture.get_sequence()
+    print("captured turn sequence: ", turn_sequence)
     auto = False
     driving = False
     left_fork = False
