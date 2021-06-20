@@ -58,12 +58,12 @@ class RecordingOutput(object):
     Object mimicking file-like object so start_recording will write each frame to it.
     See: https://picamera.readthedocs.io/en/release-1.12/api_camera.html#picamera.PiCamera.start_recording
     """
-    def __init__(self, height=50, width=50, read_row_pos_percent=80):
+    def __init__(self, height=50, width=50, read_row_pos_percent=88):
         self.fheight = height
         self.fwidth = width
         self.frame_cnt = 0
         self.t0 = 0
-        self.p_gain = 0.25
+        self.p_gain = 0.27
         self.yuv_data = dict(y=None, u=None, v=None)
         self.line_position_at_row = [0] * self.fheight
         self.line_width_at_row = [0] * self.fheight
@@ -134,14 +134,19 @@ class RecordingOutput(object):
         data = self.yuv_data[channel]
 
         # TODO Only extract specified rows?
-        for i in range(0, self.fheight // 2, slice_step):
-            new_line_position, new_line_width = process_row(data[i])
-            # perhaps we shouldn't be skipping empty lists here
-            # but get_turn_command should do the right thing when it fails to pick up a line at the expected position?
-            if new_line_position:
-                index = int(i/slice_step)
-                self.line_position_at_row[index] = new_line_position
-                self.line_width_at_row[index] = new_line_width
+        #for i in range(0, self.fheight // 2, slice_step):
+        #    new_line_position, new_line_width = process_row(data[i])
+        #    # perhaps we shouldn't be skipping empty lists here
+        #    # but get_turn_command should do the right thing when it fails to pick up a line at the expected position?
+        #    if new_line_position:
+        #        index = int(i/slice_step)
+        #        self.line_position_at_row[index] = new_line_position
+        #        self.line_width_at_row[index] = new_line_width
+        read_row = int((self.get_channel_height(channel=channel) / 100) * self.read_row_pos_percent)
+        new_line_position, new_line_width = process_row(data[read_row])
+        if new_line_position:
+            self.line_width_at_row[read_row] = new_line_width
+            self.line_position_at_row[read_row] = new_line_position
 
 
     def get_turn_command(self, channel='u', left_fork=True):
@@ -151,13 +156,13 @@ class RecordingOutput(object):
         # why are we calculating the line positions of all the rows, if we're only looking at the value for row 35?
         read_row = int((self.get_channel_height(channel=channel) / 100) * self.read_row_pos_percent)
         lines = len(self.line_position_at_row[read_row])
-        if lines > 1 and (self.last_fork_time + self.fork_timeout < time.time()):
-            #new junction detected
-            self.last_fork_time = time.time()
-            if left_fork:
-                return -turn_at_fork
-            else:
-                return turn_at_fork
+#        if lines > 1 and (self.last_fork_time + self.fork_timeout < time.time()):
+#            #new junction detected
+#            self.last_fork_time = time.time()
+#            if left_fork:
+#                return -turn_at_fork
+#            else:
+#                return turn_at_fork
         if left_fork:
             line_position = self.line_position_at_row[read_row][0]
         else:
