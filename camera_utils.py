@@ -129,7 +129,7 @@ class RecordingOutput(object):
         self.extract_line_positions()
 
         # actual processing
-        if WRITE_IMAGES and self.frame_cnt % 20 == 0:
+        if WRITE_IMAGES and self.frame_cnt % 5 == 0:
             for channel in ['y', 'u']:
                 write_luminance_disk(
                     self.yuv_data[channel],
