@@ -29,22 +29,22 @@ def write_luminance_disk(data, frame, channel, line_positions=None, line_widths=
             for found_line_number, line_pos in enumerate(lines_at_row):
                 # if we have line width, draw that first
                 # COMMENTING OUT LINE WITH DRAWING FOR NOW UNTIL SCALING ISSUES RESOLVED
-                # if line_widths:
-                #     # we should have a corresponding width for every found line
-                #     try:
-                #         line_width = line_widths[found_line_number]
-                #         if line_width:
-                #             line_width_start = line_pos - (line_width // 2)
-                #             # draw the line width in yellow (blue if it's the read_row)
-                #             line_width_colour = (0, 0, 255) if read_row else (0, 255, 255)
-                #             line_y = row_num * scaling_factor
-                #             line_start_x = line_width_start * scaling_factor
-                #             line_end_x = (line_width_start + line_width) * scaling_factor
-                #             draw.line([(line_start_x, line_y), (line_end_x, line_y)], fill=line_width_colour)
-                #     except KeyError:
-                #         pass
+                if line_widths:
+                    # we should have a corresponding width for every found line
+                    try:
+                        line_width = line_widths[found_line_number]
+                        if line_width:
+                            line_width_start = line_pos - (line_width // 2)
+                            # draw the line width in white (black if it's the read_row)
+                            line_width_colour = 0 if row_num == read_row else 255
+                            line_y = row_num * scaling_factor
+                            line_start_x = line_width_start * scaling_factor
+                            line_end_x = (line_width_start + line_width) * scaling_factor
+                            draw.line([(line_start_x, line_y), (line_end_x, line_y)], fill=line_width_colour)
+                    except KeyError:
+                        pass
 
-                # draw the center point of the line in white (black if it's the read_row)
+                # draw the center point of the line in black (white if it's the read_row)
                 center_dot_colour = 255 if row_num == read_row else 0
                 im.putpixel((line_pos * scaling_factor, row_num * scaling_factor), center_dot_colour)
 
