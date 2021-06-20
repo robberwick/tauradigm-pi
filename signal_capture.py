@@ -32,7 +32,9 @@ class AudioCapture():
             magnitude *= self.gain / self.fftsize
             max_component = np.amax(magnitude)
             dominant_frequency = np.where(magnitude == np.amax(magnitude))[0][0]
-            if (max_component > 0.12) and (max_component > self.last_max_component):
+            min_level = 0.12
+            min_increment = 0.1
+            if (max_component > min_level) and (max_component > (self.last_max_component + min_increment)):
                 df = dominant_frequency
                 signal = None
                 if (100 < df < 120): signal = "1*"
