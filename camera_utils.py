@@ -28,19 +28,19 @@ def write_luminance_disk(data, frame, channel, line_positions=None, line_widths=
 
             for found_line_number, line_pos in enumerate(lines_at_row):
                 # if we have line width, draw that first
-                # COMMENTING OUT LINE WITH DRAWING FOR NOW UNTIL SCALING ISSUES RESOLVED
                 if line_widths:
                     # we should have a corresponding width for every found line
                     try:
-                        line_width = line_widths[found_line_number]
-                        if line_width:
-                            line_width_start = line_pos - (line_width // 2)
-                            # draw the line width in white (black if it's the read_row)
-                            line_width_colour = 0 if row_num == read_row else 255
-                            line_y = row_num * scaling_factor
-                            line_start_x = line_width_start * scaling_factor
-                            line_end_x = (line_width_start + line_width) * scaling_factor
-                            draw.line([(line_start_x, line_y), (line_end_x, line_y)], fill=line_width_colour)
+                        row_line_widths = line_widths[found_line_number]
+                        if row_line_widths:
+                            for row_line_width in row_line_widths:
+                                line_width_start = line_pos - (row_line_width // 2)
+                                # draw the line width in white (black if it's the read_row)
+                                line_width_colour = 0 if row_num == read_row else 255
+                                line_y = row_num * scaling_factor
+                                line_start_x = line_width_start * scaling_factor
+                                line_end_x = (line_width_start + row_line_width) * scaling_factor
+                                draw.line([(line_start_x, line_y), (line_end_x, line_y)], fill=line_width_colour)
                     except KeyError:
                         pass
 
