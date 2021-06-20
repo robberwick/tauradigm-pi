@@ -7,6 +7,8 @@ from turn_signal_states import CaptureSequence
 
 class AudioCapture():
     def __init__(self):
+        self.sequence = CaptureSequence()
+        self.sequence.start()
         self.last_max_component = 0
         self.gain = 10
         self.running = True
@@ -16,6 +18,7 @@ class AudioCapture():
         delta_f = (high - low) / (bins)
         low_bin = math.floor(low / delta_f)
         self.block_duration = 50  #milliseconds
+    
         try:
             self.samplerate = sd.query_devices(kind='input')['default_samplerate']
             self.fftsize = math.ceil(self.samplerate / delta_f)
@@ -39,7 +42,7 @@ class AudioCapture():
                 if (179 < df < 200): signal = "5*"
                 print(signal)
                 try:
-                    sequence.signal_received(signal)
+                    self.sequence.signal_received(signal)
                 except:
                     pass
             self.last_max_component = max_component
@@ -48,14 +51,13 @@ class AudioCapture():
 
     def get_sequence(self):
             #start sequence FSM
-            sequence = CaptureSequence()
-            sequence.start()
+
 
             with sd.InputStream(device=None, channels=1, callback=self.callback,
                                 blocksize=int(self.samplerate * self.block_duration / 1000),
                                 samplerate=self.samplerate):
                 while self.running:
                     sleep(0.001)
-                    if sequence.state == 'sequence complete':
-                        return sequence.turn_sequence
+                    if self.sequence.state == 'sequence complete':
+                        return self.sequence.turn_sequence
 
