@@ -88,8 +88,8 @@ class RecordingOutput(object):
         self.t0 = 0
         self.p_gain = 0.25
         self.yuv_data = dict(y=None, u=None, v=None)
-        self.line_position_at_row = [0] * self.fheight
-        self.line_width_at_row = [0] * self.fheight
+        self.line_position_at_row = [[]] * self.fheight
+        self.line_width_at_row = [[]] * self.fheight
         self.read_row_pos_percent = read_row_pos_percent
         self.last_fork_time = 0
         self.fork_timeout = 0.5
