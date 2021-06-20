@@ -20,54 +20,62 @@ def write_luminance_disk(data, frame, channel):
 
 def process_row(received_row):
     """Returns a tuple of (line position (center) and line width for the given row data"""
-    minval = 255
-    maxval = 0
     rowCopy = received_row.copy()
     row = memoryview(rowCopy) #[y*w:(y+1)*w]
-
-    x = 0
-    weighted_average = 0
-    line_count = 0
+    image_width = len(row)
+    line_counts = []
+    line_positions = []
     threshold = 125
+    min_width = 2
+    inside_line = False
+    start = 0
+    x = 0
     for val in row:
         if val > threshold:
-#            val = 255
-            pass
+            #not line
+            if inside_line:
+                line_width = x - start
+                if line_width > min_width:
+                    line_counts.append(line_width)
+                    line_position = (x + start)/image_width - 1
+                    line_positions.append(line_position)
+                inside_line = False
         else:
-#            val = 0
-            weighted_average += x
-            line_count += 1
-#       row[x] = val
+            #line
+            if not inside_line:
+                start = x
+                inside_line = True
         x = x + 1
-    max_line_width = 1000
-    if line_count < max_line_width and line_count >0:
-        line_position = 2 * weighted_average / len(row) / line_count
-        line_position -= 1
-    else:
-        # No line line found - return None
-        line_position = None
+    if inside_line and (x - start) >= 2:
+        line_counts.append(x - start)
+        line_positions.append((x + start)/image_width - 1)
 
-    return line_position, line_count
+    return line_positions, line_counts
+
 
 class RecordingOutput(object):
     """
     Object mimicking file-like object so start_recording will write each frame to it.
     See: https://picamera.readthedocs.io/en/release-1.12/api_camera.html#picamera.PiCamera.start_recording
     """
-    def __init__(self, height=50, width=50, read_row_pos_percent=88):
+    def __init__(self, height=50, width=50, read_row_pos_percent=80):
         self.fheight = height
         self.fwidth = width
         self.frame_cnt = 0
         self.t0 = 0
-
         self.p_gain = 0.25
         self.yuv_data = dict(y=None, u=None, v=None)
         self.line_position_at_row = [0] * self.fheight
         self.line_width_at_row = [0] * self.fheight
         self.read_row_pos_percent = read_row_pos_percent
+        self.last_fork_time = 0
+        self.fork_timeout = 0.5
 
     def get_channel_height(self, channel='u'):
         return self.fheight if channel.lower() == 'y' else self.fheight // 2
+
+    def get_channel_width(self, channel='u'):
+        return self.fwidth if channel.lower() == 'y' else self.fwidth // 2
 
     def write(self, buf):
         global t_prev
@@ -128,17 +136,32 @@ class RecordingOutput(object):
         # TODO Only extract specified rows?
         for i in range(0, self.fheight // 2, slice_step):
             new_line_position, new_line_width = process_row(data[i])
-            if new_line_position is not None:
+            # perhaps we shouldn't be skipping empty lists here
+            # but get_turn_command should do the right thing when it fails to pick up a line at the expected position?
+            if new_line_position:
                 index = int(i/slice_step)
                 self.line_position_at_row[index] = new_line_position
                 self.line_width_at_row[index] = new_line_width
 
 
-    def get_turn_command(self, channel='u'):
-        """Calculate the turn command from the currently calculated line positions"""
-        max_turn_correction = 0.25
+    def get_turn_command(self, channel='u', left_fork=True):
+        """Calculate the turn command from the currently calculated line positions and a L or R fork option"""
+        max_turn_correction = 0.5
+        turn_at_fork = 1
         # why are we calculating the line positions of all the rows, if we're only looking at the value for row 35?
         read_row = int((self.get_channel_height(channel=channel) / 100) * self.read_row_pos_percent)
-        turn_command = min(self.p_gain * self.line_position_at_row[read_row], max_turn_correction)
+        lines = len(self.line_position_at_row[read_row])
+        if lines > 1 and (self.last_fork_time + self.fork_timeout < time.time()):
+            #new junction detected
+            self.last_fork_time = time.time()
+            if left_fork:
+                return -turn_at_fork
+            else:
+                return turn_at_fork
+        if left_fork:
+            line_position = self.line_position_at_row[read_row][0]
+        else:
+            line_position = self.line_position_at_row[read_row][lines-1]
+        turn_command = min(self.p_gain * line_position, max_turn_correction)
         turn_command = max(turn_command, -max_turn_correction)
         return turn_command
