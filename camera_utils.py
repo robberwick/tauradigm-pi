@@ -28,12 +28,15 @@ def write_luminance_disk(data, frame, channel, line_positions=None, line_widths=
                 # if we have line width, draw that first
                 if line_widths:
                     # we should have a corresponding width for every found line
-                    line_width = line_widths.get(found_line_number)
-                    if line_width:
-                        line_width_start = line_pos - (line_width // 2)
-                        # draw the line width in yellow (blue if it's the read_row)
-                        line_width_colour = (0, 0, 255) if read_row else (0, 255, 255)
-                        draw.line([(line_width_start, row_num), (line_width_start + line_width, row_num)], fill=line_width_colour)
+                    try:
+                        line_width = line_widths[found_line_number]
+                        if line_width:
+                            line_width_start = line_pos - (line_width // 2)
+                            # draw the line width in yellow (blue if it's the read_row)
+                            line_width_colour = (0, 0, 255) if read_row else (0, 255, 255)
+                            draw.line([(line_width_start, row_num), (line_width_start + line_width, row_num)], fill=line_width_colour)
+                    except KeyError:
+                        pass
 
                 # draw the center point of the line in green (red if it's the read_row)
                 center_dot_colour = (255, 0, 0) if row_num == read_row else (0, 255, 0)
