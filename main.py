@@ -49,7 +49,7 @@ RESOLUTION = (1280, 720)
 fwidth = (RESOLUTION[0] + 31) // 32 * 32
 fheight = (RESOLUTION[1] + 15) // 16 * 16
 print(f'frame size {fwidth}x{fheight}')
-lineFollowingSpeed = 0.35
+lineFollowingSpeed = 0.3
 
 class RobotStopException(Exception):
     pass
@@ -100,9 +100,10 @@ def run():
     print("note key: ", capture.sequence.signal_key)
     turn_sequence = capture.get_sequence()
     print("captured turn sequence: ", turn_sequence)
+    max_turns = capture.sequence.number_of_turns
     auto = False
     driving = False
-    left_fork = False
+
     try:
         link = txfer.SerialTransfer('/dev/serial0', baud=500000, restrict_ports=False)
         battery_checked = False
@@ -194,13 +195,15 @@ def run():
                             else:
                                 power_left, power_right = 0, 0
                             if auto:
-                                power_left, power_right = mixer(yaw=output.get_turn_command(left_fork=left_fork), throttle=-lineFollowingSpeed)
+                                turn_number = min(max_turns, output.fork_number)
+                                turn_direction = 'left' #turn_sequence[turn_number]
+                                power_left, power_right = mixer(yaw=output.get_turn_command(fork=turn_direction), throttle=-lineFollowingSpeed)
                                 print("     ", end='\r', flush=True)
                                 message = f'line: {output.get_turn_command():.2f}, power = {power_left}, {power_right}'
                                 print(message, end='\r', flush=True)
                             send_motor_speed_message(link=link, left=power_left, right=power_right)
                             if link.available():
-                                log_data = (time.time(), output.line_position_at_row, output.line_width_at_row,)+ receive_sensor_data(link=link)
+                                log_data = (time.time(),)+ receive_sensor_data(link=link) + (output.fork_number, output.line_position_at_row[21], output.line_width_at_row[21], )
                                 logger.log('DATA', ','.join(map(str,log_data)))
                             else:
                                 link_msg = 'no data - link status: {}'.format(link.status)
