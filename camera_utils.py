@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image, ImageDraw
 import numpy as np
 import time
 from datetime import datetime
@@ -11,11 +11,34 @@ FPS_MODE = FPS_MODE_OFF
 
 WRITE_IMAGES = True #False
 
-def write_luminance_disk(data, frame, channel):
+def write_luminance_disk(data, frame, channel, line_positions=None, line_widths=None, read_row=None):
     date = datetime.now()
     timestamp = date.strftime('%H-%M-%S')
     filename = f'images/frame-{frame}-{timestamp}-{channel}.bmp'
     im = Image.fromarray(data, mode='L')  # if using luminance mode
+
+    # if we have line positions, plot them
+    if line_positions:
+        draw = ImageDraw.Draw(im)
+        # iterate through all rows in line_positions
+        for row_num, lines_at_row in enumerate(line_positions):
+            # row will contain an array of midpoints for detected lines
+
+            for found_line_number, line_pos in enumerate(lines_at_row):
+                # if we have line width, draw that first
+                if line_widths:
+                    # we should have a corresponding width for every found line
+                    line_width = line_widths.get(found_line_number)
+                    if line_width:
+                        line_width_start = line_pos - (line_width // 2)
+                        # draw the line width in yellow (blue if it's the read_row)
+                        line_width_colour = (0, 0, 255) if read_row else (0, 255, 255)
+                        draw.line([(line_width_start, row_num), (line_width_start + line_width, row_num)], fill=line_width_colour)
+
+                # draw the center point of the line in green (red if it's the read_row)
+                center_dot_colour = (255, 0, 0) if row_num == read_row else (0, 255, 0)
+                im.putpixel((line_pos, row_num), center_dot_colour)
+
     im.save(filename)
 
 def process_row(received_row):
@@ -77,6 +100,9 @@ class RecordingOutput(object):
     def get_channel_width(self, channel='u'):
         return self.fwidth if channel.lower() == 'y' else self.fwidth // 2
 
+    def get_read_row(self, channel='u'):
+        return int((self.get_channel_height(channel=channel) / 100) * self.read_row_pos_percent)
+
     def write(self, buf):
         global t_prev
         # write will be called once for each frame of output. buf is a bytes
@@ -98,15 +124,25 @@ class RecordingOutput(object):
             count=self.fwidth//2 * self.fheight//2,
             offset=int(v_offset)
         ).reshape((self.fheight//2, self.fwidth//2))
-        # actual processing
-        if WRITE_IMAGES and self.frame_cnt % 20 == 0:
-            write_luminance_disk(self.yuv_data['y'], self.frame_cnt, 'Y')
-            write_luminance_disk(self.yuv_data['u'], self.frame_cnt, 'U')
-         #   write_luminance_disk(self.yuv_data['v'], self.frame_cnt, 'V')
-        self.frame_cnt += 1
 
         # Extract line data
         self.extract_line_positions()
+
+        # actual processing
+        if WRITE_IMAGES and self.frame_cnt % 20 == 0:
+            for channel in ['y', 'u']:
+                write_luminance_disk(
+                    self.yuv_data[channel],
+                    self.frame_cnt,
+                    channel.upper(),
+                    line_positions=self.line_position_at_row,
+                    line_widths=self.line_width_at_row,
+                    read_row=self.get_read_row(channel)
+                    )
+            # write_luminance_disk(self.yuv_data['y'], self.frame_cnt, 'Y')
+            # write_luminance_disk(self.yuv_data['u'], self.frame_cnt, 'U')
+         #   write_luminance_disk(self.yuv_data['v'], self.frame_cnt, 'V')
+        self.frame_cnt += 1
 
         if FPS_MODE is not FPS_MODE_OFF:
             if FPS_MODE == FPS_MODE_FBF:
@@ -149,7 +185,7 @@ class RecordingOutput(object):
         max_turn_correction = 0.5
         turn_at_fork = 1
         # why are we calculating the line positions of all the rows, if we're only looking at the value for row 35?
-        read_row = int((self.get_channel_height(channel=channel) / 100) * self.read_row_pos_percent)
+        read_row = self.get_read_row(channel=channel)
         lines = len(self.line_position_at_row[read_row])
         if lines > 1 and (self.last_fork_time + self.fork_timeout < time.time()):
             #new junction detected
