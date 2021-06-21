@@ -13,6 +13,7 @@ from loguru import logger
 
 from pySerialTransfer import pySerialTransfer as txfer
 import navigation
+from navigation import Pose
 
 data_filter = lambda record: record["level"].name == "DATA"
 non_data_filter = lambda record: record["level"].name != "DATA"
@@ -70,6 +71,14 @@ def send_waypoint_message(link=None, pose=None):
         # print('sending: {}'.format(payload))
         link.send(len(payload))
 
+def send_straight_move_message(link=None, pose=None):
+    if pose:
+        payload = struct.pack('=bfff', 4, pose.x, pose.y, pose.heading)
+        for i, b in enumerate(list(payload)):
+            link.txBuff[i] = b
+        # print('sending: {}'.format(payload))
+        link.send(len(payload))
+
 def unpack_log_message(link=None):
 #    fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3
     fmt = 'f' * 3 + 'f' * 3
@@ -81,7 +90,6 @@ def unpack_log_message(link=None):
 def extract_current_pose(log_vars):
     """Extract the current pose from the tuple of values extracted from the log message"""
     *_, x, y, heading = log_vars
-    print(log_vars)
     return navigation.Pose(x, y, heading)
 
 @click.command()
@@ -90,17 +98,12 @@ def run(waypoints=None):
     waypoint_list = None
     navigating = False
     driving = True
-    try:
-        with open(waypoints) as fp:
-            waypoint_list = json.load(fp)
-    except (FileNotFoundError, JSONDecodeError):
-        logger.error(f"Could not open waypoints file: {waypoints}")
-        return
-    navigator = navigation.Navigator(waypoints=waypoint_list)
+
     try:
         link = txfer.SerialTransfer('/dev/serial0', baud=500000, restrict_ports=False)
         battery_checked = False
-
+        send_button_press_message(link,button=b'l')
+        send_button_press_message(link,button=b'r')
 
         while True:
             # Inner try / except is used to wait for a controller to become available, at which point we
@@ -139,17 +142,21 @@ def run(waypoints=None):
                             time.sleep(0.06)
                             logger.debug(joystick.presses)
                             if joystick.presses.circle:
-                                send_button_press_message(link,button=b'c')
+                                #send_button_press_message(link,button=b'c')
                                 logger.info('circle button pressed')
+                                test_B = Pose(500, 0, 0)
+                                send_straight_move_message(link=link, pose=test_B)
                             if joystick.presses.triangle:
-                             #   send_button_press_message(link,button=b't')
+                                #send_button_press_message(link,button=b't')
                                 logger.info('triangle button pressed')
                                 driving = True
                             if joystick.presses.square:
-                                send_button_press_message(link,button=b's')
+                                #send_button_press_message(link,button=b's')
+                                test_A = Pose(0, 0, 0)
+                                send_straight_move_message(link=link, pose=test_A)
                                 logger.info('square button pressed')
                             if joystick.presses.cross:
-                              #  send_button_press_message(link,button=b'x')
+                                send_button_press_message(link,button=b'x')
                                 logger.info('cross button pressed')
                                 driving = False
                             if joystick.presses.dleft:
@@ -165,8 +172,6 @@ def run(waypoints=None):
                             if joystick.presses.ddown:
                                 send_button_press_message(link,button=b'd')
                                 logger.info('D pad down pressed')
-                                navigator.current_waypoint_index = None
-                                navigator.target_waypoint_index = 0
                                 navigating = False
                             time.sleep(0.05)
                         # If home was pressed, raise a RobotStopException to bail out of the loop
@@ -178,7 +183,7 @@ def run(waypoints=None):
                             power_left, power_right = 0, 0
                         if not navigating:
                             send_motor_speed_message(link=link, left=power_left, right=power_right)
-                        if link.available() and navigating:
+                        if link.available():
                             # unpack the incoming log message into a tuple
                             message_values = unpack_log_message(link=link)
 
@@ -188,12 +193,7 @@ def run(waypoints=None):
                             # Get the current pose from the message values
                             current_pose = extract_current_pose(message_values)
                             # Is the current position close enough to the target waypoint to select the next one?
-                            if current_pose is not None:
-                                if navigator.should_increment_waypoint(current_pose):
-                                    navigator.increment_waypoint_index()
-                            # send the waypoint message to the teensy
-                            send_waypoint_message(link=link, pose=navigator.target_waypoint)
-                            print(navigator.target_waypoint)
+
                         else:
                             link_msg = 'no data - link status: {}'.format(link.status)
                             logger.info(link_msg)
