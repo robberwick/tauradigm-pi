@@ -49,7 +49,7 @@ RESOLUTION = (1280, 720)
 fwidth = (RESOLUTION[0] + 31) // 32 * 32
 fheight = (RESOLUTION[1] + 15) // 16 * 16
 print(f'frame size {fwidth}x{fheight}')
-lineFollowingSpeed = 0.3
+lineFollowingSpeed = 0.33
 
 class RobotStopException(Exception):
     pass
@@ -96,11 +96,15 @@ def receive_sensor_data(link=None):
 
 def run():
 
-    capture = AudioCapture()
-    print("note key: ", capture.sequence.signal_key)
-    turn_sequence = capture.get_sequence()
-    print("captured turn sequence: ", turn_sequence)
-    max_turns = capture.sequence.number_of_turns
+#    capture = AudioCapture()
+#    print("note key: ", capture.sequence.signal_key)
+#    turn_sequence = capture.get_sequence()
+#    print("captured turn sequence: ", turn_sequence)
+#    max_turns = capture.sequence.number_of_turns
+    turn_sequence = ['right', 'right', 'left']
+    max_turns =3
+
+
     auto = False
     driving = False
 
@@ -201,6 +205,9 @@ def run():
                                 print("     ", end='\r', flush=True)
                                 message = f'line: {output.get_turn_command():.2f}, power = {power_left}, {power_right}'
                                 print(message, end='\r', flush=True)
+                                wall_stop_threshold = 0.75
+                                if (output.wall_closeness > wall_stop_threshold) and (output.fork_number >= max_turns):
+                                    power_left, power_right = 0, 0
                             send_motor_speed_message(link=link, left=power_left, right=power_right)
                             if link.available():
                                 log_data = (time.time(),)+ receive_sensor_data(link=link) + (output.fork_number, output.line_position_at_row[21], output.line_width_at_row[21], )

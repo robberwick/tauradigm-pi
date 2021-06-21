@@ -25,7 +25,7 @@ def process_row(received_row):
     image_width = len(row)
     line_counts = []
     line_positions = []
-    threshold = 100
+    threshold = 110
     min_width = 2
     inside_line = False
     start = 0
@@ -53,6 +53,23 @@ def process_row(received_row):
 
     return line_positions, line_counts
 
+def process_col(received_col):
+    """returns fraction of col below threshold"""
+    colCopy = received_col.copy()
+    col = memoryview(colCopy) #[y*w:(y+1)*w]
+    image_height = len(col)
+    line_count = 0
+    threshold = 125
+    x = 0
+    for val in col:
+        if val > threshold:
+            pass
+        else:
+            line_count = line_count + 1
+    
+    wall_fraction = line_count / image_height
+
+    return wall_fraction
 
 class RecordingOutput(object):
     """
@@ -72,6 +89,7 @@ class RecordingOutput(object):
         self.last_fork_time = 0
         self.fork_timeout = 0.5
         self.fork_number = 0
+        self.wall_closeness = 0
 
     def get_channel_height(self, channel='u'):
         return self.fheight if channel.lower() == 'y' else self.fheight // 2
@@ -109,6 +127,7 @@ class RecordingOutput(object):
 
         # Extract line data
         self.extract_line_positions()
+        self.extract_wall_distance()
 
         if FPS_MODE is not FPS_MODE_OFF:
             if FPS_MODE == FPS_MODE_FBF:
@@ -145,6 +164,15 @@ class RecordingOutput(object):
                 self.line_position_at_row[index] = new_line_position
                 self.line_width_at_row[index] = new_line_width
 
+    def extract_wall_distance(self, channel='y'):
+        """Extract the wall position from the current image data using the specified channel"""
+        slice_step = 1
+
+        # select data from channel
+        data = self.yuv_data[channel]
+        self.wall_closeness = process_col(data[:,48])
+
+            
 
     def get_turn_command(self, channel='u', fork='left'):
         """Calculate the turn command from the currently calculated line positions and a L or R fork option"""
