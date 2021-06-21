@@ -28,7 +28,7 @@ log_data = None
 RECORD_TIME = 5  # number of seconds to record
 
 # FRAME_RATE = 90
-FRAME_RATE = 90
+FRAME_RATE = 85
 # FRAME_RATE = 200
 
 # SENSOR_MODE = 4  # 1640x1232, full FoV, binning 2x2
@@ -49,7 +49,7 @@ RESOLUTION = (1280, 720)
 fwidth = (RESOLUTION[0] + 31) // 32 * 32
 fheight = (RESOLUTION[1] + 15) // 16 * 16
 print(f'frame size {fwidth}x{fheight}')
-lineFollowingSpeed = 0.33
+lineFollowingSpeed = 0.38
 
 class RobotStopException(Exception):
     pass
@@ -93,6 +93,7 @@ def receive_sensor_data(link=None):
     response = array.array('B', link.rxBuff[:link.bytesRead]).tobytes()
 
     return struct.unpack(fmt, response)
+
 
 def run():
 
@@ -142,6 +143,7 @@ def run():
 
                         # Loop until the joystick disconnects, or we deliberately stop by raising a
                         # RobotStopException
+                        start_time = time.time()
                         while joystick.connected:
                             if not battery_checked:
                                 battery_level = joystick.battery_level
@@ -208,17 +210,21 @@ def run():
                                 print("     ", end='\r', flush=True)
                                 message = f'line: {output.get_turn_command():.2f}, power = {power_left}, {power_right}'
                                 print(message, end='\r', flush=True)
-                                wall_stop_threshold = 0.67
-                                if (output.wall_closeness > wall_stop_threshold) and (output.fork_number >= max_turns):
+                                wall_stop_threshold = 0.75
+                                time_stop_threshold = 9
+                                if ((output.wall_closeness > wall_stop_threshold)
+                                        and (output.fork_number >= max_turns)
+                                        and (time.time() > start_time + time_stop_threshold)):
                                     power_left, power_right = 0, 0
+                                    auto = False
                             send_motor_speed_message(link=link, left=power_left, right=power_right)
                             if link.available():
-                                log_data = (time.time(),)+ receive_sensor_data(link=link) + (output.fork_number, output.line_position_at_row[21], output.line_width_at_row[21], )
+                                log_data = (time.time(),)+ receive_sensor_data(link=link) + (output.fork_number, output.last_line_position ,output.line_position_at_row[21], output.line_width_at_row[21], )
                                 logger.log('DATA', ','.join(map(str,log_data)))
                             else:
                                 link_msg = 'no data - link status: {}'.format(link.status)
                                 logger.info(link_msg)
-                            time.sleep(0.02)
+                            time.sleep(0.018)
 
                 except IOError:
                     # We get an IOError when using the ControllerResource if we don't have a controller yet,
