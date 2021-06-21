@@ -79,6 +79,14 @@ def send_straight_move_message(link=None, pose=None):
         # print('sending: {}'.format(payload))
         link.send(len(payload))
 
+def send_rotate_message(link=None, pose=None):
+    if pose:
+        payload = struct.pack('=bfff', 5, pose.x, pose.y, pose.heading)
+        for i, b in enumerate(list(payload)):
+            link.txBuff[i] = b
+        # print('sending: {}'.format(payload))
+        link.send(len(payload))
+
 def unpack_log_message(link=None):
 #    fmt = 'f' * 8 + 'l' * 6 + 'f' * 3 + 'f' * 3
     fmt = 'f' * 3 + 'f' * 3
@@ -173,6 +181,14 @@ def run(waypoints=None):
                                 send_button_press_message(link,button=b'd')
                                 logger.info('D pad down pressed')
                                 navigating = False
+                            if joystick.presses.l2:
+                                logger.info('left 2 trigger pressed')
+                                west = Pose(0, 0, -1.57)
+                                send_rotate_message(link=link, pose=west)
+                            if joystick.presses.r2:
+                                logger.info('right 2 trigger pressed')
+                                north = Pose(0, 0, 0)
+                                send_rotate_message(link=link, pose=north)
                             time.sleep(0.05)
                         # If home was pressed, raise a RobotStopException to bail out of the loop
                         # Home is generally the PS button for playstation controllers, XBox for XBox etc
