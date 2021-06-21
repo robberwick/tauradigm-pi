@@ -96,16 +96,15 @@ def receive_sensor_data(link=None):
 
 def run():
 
-#    capture = AudioCapture()
-#    print("note key: ", capture.sequence.signal_key)
-#    turn_sequence = capture.get_sequence()
-#    print("captured turn sequence: ", turn_sequence)
-#    max_turns = capture.sequence.number_of_turns
-    turn_sequence = ['right', 'right', 'left']
-    max_turns =3
+    capture = AudioCapture()
+    print("note key: ", capture.sequence.signal_key)
+    turn_sequence = capture.get_sequence()
+    print("captured turn sequence: ", turn_sequence)
+    max_turns = capture.sequence.number_of_turns
+#    turn_sequence = ['right', 'right', 'left']
+#    max_turns =3
 
-
-    auto = False
+    auto = True
     driving = False
 
     try:
@@ -126,6 +125,10 @@ def run():
             output.t0 = time.time()  # seconds
             t_prev = output.t0
             camera.start_recording(output, 'yuv', resize=(output.fwidth, output.fheight))
+            
+            #reset odometry:
+            send_button_press_message(link,button=b'l')
+            send_button_press_message(link,button=b'r')
 
             while True:
                 # Inner try / except is used to wait for a controller to become available, at which point we
@@ -199,13 +202,13 @@ def run():
                             else:
                                 power_left, power_right = 0, 0
                             if auto:
-                                turn_number = min(max_turns, output.fork_number)
-                                turn_direction = 'left' #turn_sequence[turn_number]
+                                turn_number = max(min(max_turns, output.fork_number)-1, 0)
+                                turn_direction = turn_sequence[turn_number]
                                 power_left, power_right = mixer(yaw=output.get_turn_command(fork=turn_direction), throttle=-lineFollowingSpeed)
                                 print("     ", end='\r', flush=True)
                                 message = f'line: {output.get_turn_command():.2f}, power = {power_left}, {power_right}'
                                 print(message, end='\r', flush=True)
-                                wall_stop_threshold = 0.75
+                                wall_stop_threshold = 0.67
                                 if (output.wall_closeness > wall_stop_threshold) and (output.fork_number >= max_turns):
                                     power_left, power_right = 0, 0
                             send_motor_speed_message(link=link, left=power_left, right=power_right)

@@ -9,7 +9,7 @@ FPS_MODE_T0 = 1
 FPS_MODE_FBF = 2
 FPS_MODE = FPS_MODE_OFF
 
-WRITE_IMAGES = True #False
+WRITE_IMAGES = False
 
 def write_luminance_disk(data, frame, channel):
     date = datetime.now()
@@ -90,6 +90,7 @@ class RecordingOutput(object):
         self.fork_timeout = 0.5
         self.fork_number = 0
         self.wall_closeness = 0
+        self.last_line_position = 0
 
     def get_channel_height(self, channel='u'):
         return self.fheight if channel.lower() == 'y' else self.fheight // 2
@@ -153,16 +154,10 @@ class RecordingOutput(object):
 
         # select data from channel
         data = self.yuv_data[channel]
-
-        # TODO Only extract specified rows?
-        for i in range(0, self.fheight // 2, slice_step):
-            new_line_position, new_line_width = process_row(data[i])
-            # perhaps we shouldn't be skipping empty lists here
-            # but get_turn_command should do the right thing when it fails to pick up a line at the expected position?
-            if new_line_position:
-                index = int(i/slice_step)
-                self.line_position_at_row[index] = new_line_position
-                self.line_width_at_row[index] = new_line_width
+        read_row = int((self.get_channel_height(channel=channel) / 100) * self.read_row_pos_percent)
+        new_line_position, new_line_width = process_row(data[read_row])
+        self.line_position_at_row[read_row] = new_line_position
+        self.line_width_at_row[read_row] = new_line_width
 
     def extract_wall_distance(self, channel='y'):
         """Extract the wall position from the current image data using the specified channel"""
@@ -180,7 +175,11 @@ class RecordingOutput(object):
         turn_at_fork = 0.5
         # why are we calculating the line positions of all the rows, if we're only looking at the value for row 35?
         read_row = int((self.get_channel_height(channel=channel) / 100) * self.read_row_pos_percent)
-        lines = len(self.line_position_at_row[read_row])
+        #print(self.line_position_at_row[read_row])
+        if type(self.line_position_at_row[read_row]) is list:
+            lines = len(self.line_position_at_row[read_row])
+        else:
+            lines = 1
         if lines > 1 and (self.last_fork_time + self.fork_timeout < time.time()):
             #new junction detected
             self.fork_number += 1
@@ -190,10 +189,15 @@ class RecordingOutput(object):
                 return -turn_at_fork
             else:
                 return turn_at_fork
-        if fork == 'left':
-            line_position = self.line_position_at_row[read_row][0]
+
+        if type(self.line_position_at_row[read_row]) is list and len(self.line_position_at_row[read_row])>0:
+            if fork == 'left':
+                line_position = self.line_position_at_row[read_row][0]
+            else:
+                line_position = self.line_position_at_row[read_row][lines-1]
         else:
-            line_position = self.line_position_at_row[read_row][lines-1]
+            line_position = self.last_line_position 
+        self.last_line_position = line_position
         turn_command = min(self.p_gain * line_position, max_turn_correction)
         turn_command = max(turn_command, -max_turn_correction)
         return turn_command
