@@ -59,7 +59,7 @@ def process_col(received_col):
     col = memoryview(colCopy) #[y*w:(y+1)*w]
     image_height = len(col)
     line_count = 0
-    threshold = 125
+    threshold = 100
     x = 0
     for val in col:
         if val > threshold:
@@ -81,12 +81,15 @@ class RecordingOutput(object):
         self.fwidth = width
         self.frame_cnt = 0
         self.t0 = 0
-        self.p_gain = 0.27
+        self.p_gain = 0.25
+        self.d_gain = 0.1
         self.yuv_data = dict(y=None, u=None, v=None)
         self.line_position_at_row = [0] * self.fheight
         self.line_width_at_row = [0] * self.fheight
         self.read_row_pos_percent = read_row_pos_percent
         self.last_fork_time = 0
+        self.tentative_fork_time =0
+        self.fork_time_threshold = 0.025
         self.fork_timeout = 0.5
         self.fork_number = 0
         self.wall_closeness = 0
@@ -171,7 +174,7 @@ class RecordingOutput(object):
 
     def get_turn_command(self, channel='u', fork='left'):
         """Calculate the turn command from the currently calculated line positions and a L or R fork option"""
-        max_turn_correction = 0.5
+        max_turn_correction = 0.18
         turn_at_fork = 0.5
         # why are we calculating the line positions of all the rows, if we're only looking at the value for row 35?
         read_row = int((self.get_channel_height(channel=channel) / 100) * self.read_row_pos_percent)
@@ -181,6 +184,16 @@ class RecordingOutput(object):
         else:
             lines = 1
         if lines > 1 and (self.last_fork_time + self.fork_timeout < time.time()):
+            #we appear to be on a fork, record the time if we've not already
+            if self.tentative_fork_time is None:
+                self.tentative_fork_time = time.time()
+        else:
+            #we're not on a fork, wipe time check
+            self.tentative_fork_time = None
+
+        if (lines > 1
+                and (self.last_fork_time + self.fork_timeout < time.time())
+                and (time.time() > self.tentative_fork_time + self.fork_time_threshold)):
             #new junction detected
             self.fork_number += 1
             print(self.fork_number)
@@ -196,8 +209,10 @@ class RecordingOutput(object):
             else:
                 line_position = self.line_position_at_row[read_row][lines-1]
         else:
-            line_position = self.last_line_position 
+            # make line position all the way to one side of the image, on the side we last saw it
+            line_position = self.last_line_position/abs(self.last_line_position) 
+        turn_command = self.p_gain * line_position
+        turn_command -= self.d_gain * (line_position - self.last_line_position)
+        turn_command = max(min(turn_command, max_turn_correction), -max_turn_correction)
         self.last_line_position = line_position
-        turn_command = min(self.p_gain * line_position, max_turn_correction)
-        turn_command = max(turn_command, -max_turn_correction)
         return turn_command
