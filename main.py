@@ -152,7 +152,7 @@ def run(waypoints=None):
                             if joystick.presses.circle:
                                 #send_button_press_message(link,button=b'c')
                                 logger.info('circle button pressed')
-                                test_B = Pose(500, 0, 0)
+                                test_B = Pose(450, 0, 0)
                                 send_straight_move_message(link=link, pose=test_B)
                             if joystick.presses.triangle:
                                 #send_button_press_message(link,button=b't')
@@ -181,9 +181,13 @@ def run(waypoints=None):
                                 send_button_press_message(link,button=b'd')
                                 logger.info('D pad down pressed')
                                 navigating = False
+                            if joystick.presses.l1:
+                                logger.info('left 1 trigger pressed')
+                                firing_position = Pose(450, -300, 0)
+                                send_straight_move_message(link=link, pose=firing_position)
                             if joystick.presses.l2:
                                 logger.info('left 2 trigger pressed')
-                                west = Pose(0, 0, -1.57)
+                                west = Pose(0, 0, -1.47)
                                 send_rotate_message(link=link, pose=west)
                             if joystick.presses.r2:
                                 logger.info('right 2 trigger pressed')
