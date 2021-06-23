@@ -38,11 +38,16 @@ class Mode(IntEnum):
     reloading = 6,
     reloaded = 7
 
+#normal
 start_position = Pose(0, 0, 0)
-midway = Pose(450, 0, 0)
+#midway = Pose(450, 0, 0)
+#firing_position = Pose(450, -300, 0)
+#long
+midway = Pose(250, -25, 0)
+firing_position = Pose(250, -170, 0)
+
 start_heading = Pose(0, 0, 0)
 firing_heading = Pose(0, 0, -1.47)
-firing_position = Pose(450, -300, 0)
 
 class RobotStopException(Exception):
     pass
@@ -248,7 +253,6 @@ def run(waypoints=None):
                             if joystick.presses.cross:
                                 send_button_press_message(link,button=b'x')
                                 logger.info('cross button pressed')
-                                driving = False
                                 fish_feeding = False
                             if joystick.presses.dleft:
                                 send_button_press_message(link,button=b'l')
@@ -282,10 +286,8 @@ def run(waypoints=None):
                         if 'home' in joystick.presses:
                             logger.info('Home button pressed - exiting')
                             raise RobotStopException()
-                        if not driving:
-                            power_left, power_right = 0, 0
                         send_motor_speed_message(link=link, left=power_left, right=power_right)
-                        time.sleep(0.03)
+                        time.sleep(0.02)
                         if link.available():
                             # unpack the incoming log message into a tuple
                             message_values = unpack_log_message(link=link)
@@ -312,7 +314,7 @@ def run(waypoints=None):
                         else:
                             link_msg = 'no data - link status: {}'.format(link.status)
                             logger.info(link_msg)
-                        time.sleep(0.03)
+                        time.sleep(0.02)
 
             except IOError:
                 # We get an IOError when using the ControllerResource if we don't have a controller yet,
