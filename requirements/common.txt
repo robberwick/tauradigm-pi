@@ -9,4 +9,4 @@ mccabe==0.6.1
 pycodestyle==2.5.0
 pyflakes==2.1.1
 pyserial==3.4
-loguru==0.4.0
+loguru==0.5.3
